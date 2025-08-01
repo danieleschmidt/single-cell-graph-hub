@@ -205,3 +205,25 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Single-cell data files
+data/
+datasets/
+*.h5
+*.h5ad
+*.zarr
+*.anndata
+*.loom
+*.mtx
+*.txt.gz
+
+# Model files
+models/
+checkpoints/
+*.pth
+*.pkl
+*.pickle
+*.joblib
+
+# Terragon value tracking
+.terragon/cache/

@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "single-cell-graph-hub"
+version = "0.1.0"
+description = "Curates >200 single-cell omics datasets pre-converted into HDF5 + PyG graph objects"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Daniel Schmidt", email = "daniel@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=2.0.0",
+    "torch-geometric>=2.3.0",
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scipy>=1.7.0",
+    "scanpy>=1.9.0",
+    "anndata>=0.8.0",
+    "h5py>=3.7.0",
+    "tqdm>=4.64.0",
+    "scikit-learn>=1.1.0",
+    "networkx>=2.8.0",
+]
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "plotly>=5.10.0",
+    "umap-learn>=0.5.0",
+]
+full = [
+    "single-cell-graph-hub[viz]",
+    "igraph>=0.10.0",
+    "leidenalg>=0.9.0",
+    "fa2>=0.3.5",
+]
+dev = [
+    "single-cell-graph-hub[full]",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=5.0.0",
+    "mypy>=0.991",
+    "pre-commit>=2.20.0",
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/single-cell-graph-hub"
+Documentation = "https://scgraphhub.readthedocs.io"
+Repository = "https://github.com/yourusername/single-cell-graph-hub"
+"Bug Tracker" = "https://github.com/yourusername/single-cell-graph-hub/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=scgraph_hub --cov-report=html --cov-report=term-missing"
