@@ -1,0 +1,109 @@
+{
+  "name": "Single-Cell Graph Hub Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "installDirectlyFromGitHubRelease": true,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "installDockerBuildx": true,
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.flake8",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.mypy-type-checker",
+        "ms-toolsai.jupyter",
+        "ms-vscode.test-adapter-converter",
+        "hbenl.vscode-test-explorer",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-markdown",
+        "davidanson.vscode-markdownlint",
+        "github.vscode-pull-request-github",
+        "eamodio.gitlens",
+        "ms-vscode.remote-repositories",
+        "ms-vsliveshare.vsliveshare"
+      ],
+      
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.formatting.provider": "black",
+        "python.formatting.blackArgs": ["--line-length=88"],
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.mypyEnabled": true,
+        "python.linting.banditEnabled": true,
+        "python.sortImports.args": ["--profile", "black"],
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.nosetestsEnabled": false,
+        "python.testing.pytestArgs": ["tests"],
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/htmlcov": true,
+          "**/.coverage": true,
+          "**/build": true,
+          "**/dist": true,
+          "**/*.egg-info": true
+        },
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "markdown.validate.enabled": true,
+        "yaml.validate": true,
+        "json.validate.enable": true
+      }
+    }
+  },
+
+  "forwardPorts": [8888, 6006, 8080],
+  "portsAttributes": {
+    "8888": {
+      "label": "Jupyter Lab",
+      "onAutoForward": "notify"
+    },
+    "6006": {
+      "label": "TensorBoard",
+      "onAutoForward": "ignore"
+    },
+    "8080": {
+      "label": "Web Server",
+      "onAutoForward": "ignore"
+    }
+  },
+
+  "postCreateCommand": "pip install -e '.[dev]' && pre-commit install && python -c 'import torch; print(f\"PyTorch version: {torch.__version__}\"); print(f\"CUDA available: {torch.cuda.is_available()}\")'",
+
+  "remoteUser": "vscode",
+  "updateContentCommand": "pip install -e '.[dev]'",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder}/.git,target=/workspaces/single-cell-graph-hub/.git,type=bind,consistency=cached"
+  ],
+
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/single-cell-graph-hub/src",
+    "JUPYTER_ENABLE_LAB": "yes",
+    "TORCH_HOME": "/tmp/torch_cache",
+    "HF_HOME": "/tmp/hf_cache"
+  }
+}
