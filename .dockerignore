@@ -1,0 +1,203 @@
+# Docker ignore file for Single-Cell Graph Hub
+# Optimize build context and security
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation
+docs/_build/
+site/
+
+# Data files (exclude large data files from Docker context)
+data/
+datasets/
+*.h5
+*.h5ad
+*.zarr
+*.anndata
+*.loom
+*.mtx
+*.txt.gz
+
+# Model files
+models/
+checkpoints/
+*.pth
+*.pkl
+*.pickle
+*.joblib
+
+# Cache directories
+.cache/
+.scgraph_hub/
+torch_cache/
+hf_cache/
+.ruff_cache/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Environment files
+.env.*
+!.env.example
+
+# Docker files (avoid recursion)
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Package managers
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Security
+secrets/
+*.pem
+*.key
+*.crt
+
+# Development tools
+.editorconfig
+.pre-commit-config.yaml
+
+# Build artifacts
+build/
+dist/
+*.tar.gz
+*.zip
+
+# Local configuration
+local/
+local_config/
+config/local/
+
+# Experiment tracking
+wandb/
+mlruns/
+.neptune/
+
+# Large binary files
+*.so
+*.dylib
+*.dll
+
+# Compiled extensions
+*.c
+*.cpp
+*.h
+*.hpp
+
+# Profiling
+*.prof
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Kubernetes
+*.yaml
+*.yml
+!docker-compose.yml
+!docker-compose.*.yml
+
+# Helm
+charts/
+*.tgz
+
+# Ignore specific large directories that aren't needed in container
+node_modules/
+bower_components/
