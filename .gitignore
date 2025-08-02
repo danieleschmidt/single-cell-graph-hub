@@ -225,5 +225,23 @@ checkpoints/
 *.pickle
 *.joblib
 
+# Cache directories
+.scgraph_hub/
+torch_cache/
+hf_cache/
+
+# Experiment tracking
+wandb/
+mlruns/
+.neptune/
+
+# IDE specific
+.vscode/settings.json
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
 # Terragon value tracking
 .terragon/cache/
