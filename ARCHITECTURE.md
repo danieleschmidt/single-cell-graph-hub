@@ -1,37 +1,170 @@
-# Architecture Overview
+# Single-Cell Graph Hub - System Architecture
 
-## System Design
+## Executive Summary
 
-Single-Cell Graph Hub is designed as a modular, extensible platform for graph-based single-cell omics analysis. The architecture follows a layered approach to ensure scalability, maintainability, and ease of use.
+Single-Cell Graph Hub is an enterprise-grade platform that transforms single-cell omics data into graph-structured datasets for advanced machine learning analysis. The system provides a unified interface for loading 200+ curated datasets, building biological cell graphs, and training specialized Graph Neural Networks for biological discovery.
 
-## Core Components
+## System Design Philosophy
 
-### 1. Data Layer
-- **Dataset Loaders**: Unified interface for loading various single-cell formats (H5AD, H5, Zarr)
-- **Graph Constructors**: Methods for building cell-cell relationship graphs
-- **Data Processors**: Standardized preprocessing pipelines
+The architecture follows **Domain-Driven Design** principles with clear separation between:
+- **Data Domain**: Graph construction and biological data processing
+- **Model Domain**: GNN architectures and training algorithms  
+- **Evaluation Domain**: Benchmarking and biological metrics
+- **Integration Domain**: External tool connectivity and APIs
 
-### 2. Model Layer
-- **Base Models**: Abstract classes defining common GNN interfaces
-- **Specialized Models**: Task-specific implementations (CellGraphSAGE, SpatialGAT, etc.)
-- **Model Zoo**: Pre-trained model repository with transfer learning capabilities
+### Design Principles
+1. **Biological Awareness**: All components respect single-cell data characteristics
+2. **Graph-First**: Native support for cell-cell relationship modeling
+3. **Extensibility**: Plugin architecture for custom methods
+4. **Performance**: Memory-efficient processing of large-scale datasets
+5. **Reproducibility**: Standardized pipelines and deterministic outputs
 
-### 3. Evaluation Layer
-- **Benchmarks**: Standardized evaluation protocols for various tasks
-- **Metrics**: Biological and graph-specific evaluation metrics
-- **Leaderboards**: Performance tracking and comparison systems
+## System Architecture
 
-### 4. Visualization Layer
-- **Interactive Plots**: Web-based graph exploration tools
-- **Publication Figures**: High-quality, publication-ready visualizations
-- **Integration Tools**: Seamless connection with existing single-cell packages
-
-## Data Flow
+### Core Layer Architecture
 
 ```
-Raw Data (H5AD/H5/Zarr) → Data Loader → Graph Constructor → Model Training → Evaluation → Visualization
-                                    ↓
-                               Preprocessor → Feature Engineering → Model Input
+┌─────────────────────────────────────────────────────────────────┐
+│                    API & Integration Layer                      │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │   REST API  │ │ Python SDK  │ │   GraphQL   │ │   WebHooks  │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────────────────────────────────────┐
+│                      Application Layer                          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │ Benchmarks  │ │ Leaderboard │ │   Model     │ │ Viz Engine  │ │
+│  │   Engine    │ │   Service   │ │    Zoo      │ │             │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────────────────────────────────────┐
+│                       Domain Layer                              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │    Data     │ │    Graph    │ │    Model    │ │ Evaluation  │ │
+│  │   Domain    │ │   Domain    │ │   Domain    │ │   Domain    │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+┌─────────────────────────────────────────────────────────────────┐
+│                   Infrastructure Layer                          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │  Storage    │ │   Compute   │ │  Messaging  │ │ Monitoring  │ │
+│  │   Layer     │ │   Engine    │ │    Queue    │ │   Stack     │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 1. Data Domain
+**Purpose**: Manage single-cell data ingestion, validation, and graph construction
+
+**Components**:
+- **DatasetCatalog**: Registry of 200+ curated single-cell datasets
+- **SCGraphDataset**: PyTorch Geometric dataset implementation
+- **DataLoaders**: Format-specific loaders (H5AD, H5, Zarr, CSV)
+- **GraphBuilders**: Cell-cell relationship construction algorithms
+- **Preprocessors**: Standardized single-cell data cleaning pipelines
+- **Validators**: Data quality and format compliance checking
+
+**Key Classes**:
+```python
+class SCGraphDataset(torch_geometric.data.Dataset)
+class SimilarityGraphBuilder
+class SpatialGraphBuilder  
+class HierarchicalGraphBuilder
+class DataProcessor
+```
+
+### 2. Graph Domain
+**Purpose**: Specialized graph construction methods for biological data
+
+**Components**:
+- **Similarity Graphs**: k-NN, radius, adaptive neighborhood
+- **Spatial Graphs**: Coordinate-based, Delaunay triangulation
+- **Biological Graphs**: Pathway, protein-protein interaction
+- **Temporal Graphs**: Trajectory, developmental progression
+- **Multi-modal Graphs**: Cross-omics relationships
+
+### 3. Model Domain  
+**Purpose**: GNN architectures optimized for single-cell analysis
+
+**Components**:
+- **BaseGNN**: Abstract base class with biological constraints
+- **Cell-specific Models**: CellGraphSAGE, SpatialGAT, HierarchicalGNN
+- **Transfer Learning**: Pre-trained model adaptation
+- **Model Registry**: Version control and model management
+- **Training Orchestrator**: Distributed training coordination
+
+**Key Architectures**:
+```python
+class CellGraphGNN(BaseGNN)
+class SpatialGAT(BaseGNN)
+class CellGraphSAGE(BaseGNN)
+class HierarchicalGNN(BaseGNN)
+class CellGraphTransformer(BaseGNN)
+```
+
+### 4. Evaluation Domain
+**Purpose**: Comprehensive benchmarking with biological validation
+
+**Components**:
+- **Task Benchmarks**: Cell type prediction, trajectory inference, batch correction
+- **Biological Metrics**: Conservation scores, pathway enrichment
+- **Graph Metrics**: Reconstruction accuracy, community detection
+- **Statistical Tests**: Significance testing, multiple comparison correction
+- **Leaderboard Engine**: Performance tracking and ranking
+
+### 5. Integration Domain
+**Purpose**: Seamless connectivity with external tools and platforms
+
+**Components**:
+- **Scanpy Bridge**: AnnData integration and workflow compatibility
+- **Seurat Interface**: R ecosystem connectivity
+- **Cloud Connectors**: AWS, GCP, Azure data access
+- **API Gateway**: RESTful and GraphQL endpoints
+- **Webhook System**: Event-driven integrations
+
+## Data Flow Architecture
+
+### Primary Data Pipeline
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Raw Data  │───▶│   Dataset   │───▶│    Graph    │───▶│   Model     │
+│ (H5AD/H5/   │    │   Loader    │    │ Constructor │    │  Training   │
+│  Zarr/CSV)  │    │             │    │             │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+                            │                   │                   │
+                            ▼                   ▼                   ▼
+                   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+                   │ Preprocessor│    │   Feature   │    │ Validation  │
+                   │  Pipeline   │    │ Engineering │    │  & Metrics  │
+                   │             │    │             │    │             │
+                   └─────────────┘    └─────────────┘    └─────────────┘
+                            │                   │                   │
+                            ▼                   ▼                   ▼
+                   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+                   │  Quality    │    │    Graph    │    │    Results  │
+                   │ Validation  │    │ Validation  │    │   Storage   │
+                   │             │    │             │    │             │
+                   └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### Inference Pipeline
+```
+New Data → Preprocessor → Graph Builder → Pre-trained Model → Predictions → Visualization
+    │            │              │               │               │
+    ▼            ▼              ▼               ▼               ▼
+Validation   Normalization   Edge Weights   Uncertainty    Interactive
+             Feature Sel.   Node Features   Estimation     Exploration
+```
+
+### Batch Processing Pipeline
+```
+Dataset Queue → Parallel Loaders → Distributed Graph Construction → Model Training Pool
+      │                │                       │                        │
+      ▼                ▼                       ▼                        ▼
+  Scheduling      Memory Mgmt           Graph Partitioning      Result Aggregation
 ```
 
 ## Component Interactions

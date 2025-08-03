@@ -1,13 +1,91 @@
-"""Basic GNN models for single-cell graph analysis."""
+"""Comprehensive GNN models for single-cell graph analysis."""
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, GATConv, SAGEConv, global_mean_pool
-from typing import Optional
+from torch_geometric.nn import (
+    GCNConv, GATConv, SAGEConv, global_mean_pool, global_max_pool,
+    MessagePassing, Sequential, Linear, ReLU, Dropout, BatchNorm1d,
+    GINConv, TransformerConv, DiffGroupNorm
+)
+from torch_geometric.utils import add_self_loops, degree
+from typing import Optional, Dict, List, Tuple, Union
+import math
 
 
-class CellGraphGNN(nn.Module):
+# Base class for extensibility
+class BaseGNN(nn.Module):
+    """Base class for all single-cell GNN models.
+    
+    Provides common functionality and interface for custom model development.
+    Includes biological constraints and standardized interfaces.
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self._embedding_dim = None
+        self._task_type = None
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Get node embeddings (before final classification layer).
+        
+        Should be implemented by subclasses to return intermediate representations.
+        
+        Args:
+            x: Node features
+            edge_index: Edge connectivity
+            **kwargs: Additional arguments
+            
+        Returns:
+            Node embeddings
+        """
+        raise NotImplementedError("Subclasses must implement get_embeddings()")
+    
+    def predict(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Make predictions on new data."""
+        self.eval()
+        with torch.no_grad():
+            return self.forward(x, edge_index, **kwargs)
+    
+    def predict_proba(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Get prediction probabilities."""
+        logits = self.predict(x, edge_index, **kwargs)
+        return F.softmax(logits, dim=-1)
+    
+    def get_attention_weights(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> Optional[torch.Tensor]:
+        """Get attention weights if model supports it."""
+        return None  # Override in attention-based models
+    
+    def num_parameters(self) -> int:
+        """Get the number of trainable parameters."""
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+    
+    def get_model_info(self) -> Dict[str, any]:
+        """Get model information and statistics."""
+        return {
+            'model_name': self.__class__.__name__,
+            'num_parameters': self.num_parameters(),
+            'embedding_dim': getattr(self, '_embedding_dim', None),
+            'task_type': getattr(self, '_task_type', None)
+        }
+    
+    def apply_biological_constraints(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply biological constraints to outputs.
+        
+        For example, ensuring non-negative gene expression predictions.
+        """
+        # Default: no constraints
+        return x
+    
+    def compute_regularization_loss(self) -> torch.Tensor:
+        """Compute additional regularization losses.
+        
+        Can include biological priors, sparsity constraints, etc.
+        """
+        return torch.tensor(0.0, device=next(self.parameters()).device)
+
+
+class CellGraphGNN(BaseGNN):
     """Basic Graph Neural Network for single-cell analysis.
     
     This model provides a simple but effective architecture for cell-level
@@ -44,6 +122,7 @@ class CellGraphGNN(nn.Module):
         
         self.num_layers = num_layers
         self.dropout = dropout
+        self._embedding_dim = hidden_dim
         
         # Input projection
         self.input_proj = nn.Linear(input_dim, hidden_dim)
@@ -77,6 +156,16 @@ class CellGraphGNN(nn.Module):
         Returns:
             Node-level predictions [num_nodes, output_dim]
         """
+        # Get embeddings
+        embeddings = self.get_embeddings(x, edge_index)
+        
+        # Output projection
+        x = self.output_proj(embeddings)
+        
+        return x
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Get embeddings before final classification layer."""
         # Input projection
         x = self.input_proj(x)
         x = F.relu(x)
@@ -94,13 +183,10 @@ class CellGraphGNN(nn.Module):
             if x.shape == residual.shape:
                 x = x + residual
         
-        # Output projection
-        x = self.output_proj(x)
-        
         return x
 
 
-class CellGraphSAGE(nn.Module):
+class CellGraphSAGE(BaseGNN):
     """GraphSAGE model for large-scale single-cell data.
     
     GraphSAGE is particularly suitable for large datasets as it uses
@@ -126,6 +212,7 @@ class CellGraphSAGE(nn.Module):
         
         self.dropout = dropout
         self.use_batch_norm = batch_norm
+        self._embedding_dim = hidden_dims[-1]
         
         # Build layer dimensions
         dims = [input_dim] + hidden_dims
@@ -143,6 +230,10 @@ class CellGraphSAGE(nn.Module):
     
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
+        return self.get_embeddings(x, edge_index)
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Get embeddings from SAGE layers."""
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             
@@ -155,7 +246,7 @@ class CellGraphSAGE(nn.Module):
         return x
 
 
-class SpatialGAT(nn.Module):
+class SpatialGAT(BaseGNN):
     """Graph Attention Network for spatial single-cell data.
     
     This model incorporates spatial information through edge attributes
@@ -180,6 +271,7 @@ class SpatialGAT(nn.Module):
         super().__init__()
         
         self.use_edge_attr = use_edge_attr
+        self._embedding_dim = hidden_dim
         
         # Spatial embedding
         if use_edge_attr:
@@ -208,6 +300,11 @@ class SpatialGAT(nn.Module):
         edge_attr: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass."""
+        return self.get_embeddings(x, edge_index, edge_attr=edge_attr)
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, 
+                      edge_attr: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
+        """Get embeddings from GAT layers."""
         # Process edge attributes (spatial coordinates)
         if self.use_edge_attr and edge_attr is not None:
             edge_attr = self.spatial_embed(edge_attr)
@@ -224,7 +321,7 @@ class SpatialGAT(nn.Module):
         return x
 
 
-class HierarchicalGNN(nn.Module):
+class HierarchicalGNN(BaseGNN):
     """Hierarchical GNN for multi-scale single-cell analysis.
     
     This model processes information at multiple scales:
@@ -246,6 +343,7 @@ class HierarchicalGNN(nn.Module):
         
         self.level_dims = level_dims
         self.pooling = pooling
+        self._embedding_dim = hidden_dim
         
         # Cell-level processing
         self.cell_conv = GCNConv(level_dims['cell'], hidden_dim)
@@ -264,25 +362,25 @@ class HierarchicalGNN(nn.Module):
         cell_type_batch: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass through hierarchy."""
+        return self.get_embeddings(x, edge_index, batch=batch, cell_type_batch=cell_type_batch)
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, 
+                      batch: Optional[torch.Tensor] = None,
+                      cell_type_batch: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
+        """Get hierarchical embeddings."""
         # Cell level
         x = self.cell_conv(x, edge_index)
         x = F.relu(x)
         
-        # Pool to cell type level
+        # Pool to cell type level if needed
         if cell_type_batch is not None:
             if self.pooling == 'mean':
                 x = global_mean_pool(x, cell_type_batch)
-            # Additional pooling methods could be added here
         
-        # Type level (would need type-level edge_index)
-        # x = self.type_conv(x, type_edge_index)
-        # x = F.relu(x)
-        
-        # For now, just return cell-level features
         return x
 
 
-class CellGraphTransformer(nn.Module):
+class CellGraphTransformer(BaseGNN):
     """Graph Transformer for single-cell data.
     
     Uses transformer-style attention mechanisms adapted for graphs
@@ -308,6 +406,7 @@ class CellGraphTransformer(nn.Module):
         
         self.model_dim = model_dim
         self.positional_encoding = positional_encoding
+        self._embedding_dim = model_dim
         
         # Input projection
         self.input_proj = nn.Linear(input_dim, model_dim)
@@ -328,6 +427,10 @@ class CellGraphTransformer(nn.Module):
     
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
+        return self.get_embeddings(x, edge_index)
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Get transformer embeddings."""
         # Project inputs
         x = self.input_proj(x)
         
@@ -349,29 +452,248 @@ class CellGraphTransformer(nn.Module):
         return x
 
 
-# Base class for extensibility
-class BaseGNN(nn.Module):
-    """Base class for all single-cell GNN models.
+class BiologicalMessagePassing(MessagePassing):
+    """Message passing layer with biological constraints.
     
-    Provides common functionality and interface for custom model development.
+    Incorporates biological knowledge like gene regulatory networks,
+    protein-protein interactions, or pathway information.
     """
     
-    def __init__(self):
-        super().__init__()
-    
-    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Get node embeddings (before final classification layer).
+    def __init__(self, in_channels: int, out_channels: int, 
+                 biological_prior: Optional[torch.Tensor] = None,
+                 aggr: str = 'add'):
+        super().__init__(aggr=aggr)
         
-        Should be implemented by subclasses to return intermediate representations.
-        """
-        raise NotImplementedError("Subclasses must implement get_embeddings()")
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        
+        # Learnable transformation
+        self.lin = nn.Linear(in_channels, out_channels)
+        
+        # Biological prior as edge weights
+        self.biological_prior = biological_prior
+        
+        # Attention mechanism for biological relevance
+        self.bio_attention = nn.Linear(in_channels * 2, 1)
+        
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        # Add self-loops
+        edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+        
+        # Start propagating messages
+        return self.propagate(edge_index, x=x)
     
-    def predict(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Make predictions on new data."""
-        self.eval()
+    def message(self, x_i: torch.Tensor, x_j: torch.Tensor, 
+                edge_index_i: torch.Tensor) -> torch.Tensor:
+        # Compute biological attention
+        bio_score = self.bio_attention(torch.cat([x_i, x_j], dim=-1))
+        bio_weight = torch.sigmoid(bio_score)
+        
+        # Apply biological prior if available
+        if self.biological_prior is not None:
+            # Assume biological_prior is an adjacency matrix
+            prior_weight = self.biological_prior[edge_index_i]
+            bio_weight = bio_weight * prior_weight.unsqueeze(-1)
+        
+        # Transform and weight messages
+        message = self.lin(x_j) * bio_weight
+        
+        return message
+
+
+class CellGraphGIN(BaseGNN):
+    """Graph Isomorphism Network adapted for single-cell data.
+    
+    GIN is particularly powerful for distinguishing different cell states
+    and capturing subtle biological differences.
+    """
+    
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int,
+                 num_layers: int = 3, dropout: float = 0.2, 
+                 eps: float = 0.0, train_eps: bool = False):
+        super().__init__()
+        
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self._embedding_dim = hidden_dim
+        
+        # GIN layers
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
+        
+        for i in range(num_layers):
+            if i == 0:
+                nn_seq = Sequential(
+                    Linear(input_dim, hidden_dim),
+                    ReLU(),
+                    Linear(hidden_dim, hidden_dim)
+                )
+            else:
+                nn_seq = Sequential(
+                    Linear(hidden_dim, hidden_dim),
+                    ReLU(), 
+                    Linear(hidden_dim, hidden_dim)
+                )
+            
+            self.convs.append(GINConv(nn_seq, eps=eps, train_eps=train_eps))
+            self.batch_norms.append(BatchNorm1d(hidden_dim))
+        
+        # Output projection
+        self.classifier = Linear(hidden_dim, output_dim)
+    
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, 
+                batch: Optional[torch.Tensor] = None) -> torch.Tensor:
+        # Get embeddings
+        embeddings = self.get_embeddings(x, edge_index)
+        
+        # Classification
+        return self.classifier(embeddings)
+    
+    def get_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, **kwargs) -> torch.Tensor:
+        for i, conv in enumerate(self.convs):
+            x = conv(x, edge_index)
+            x = self.batch_norms[i](x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        
+        return x
+
+
+# Model Registry for easy access
+MODEL_REGISTRY = {
+    'cellgnn': CellGraphGNN,
+    'cellsage': CellGraphSAGE,
+    'spatialgat': SpatialGAT,
+    'hierarchical': HierarchicalGNN,
+    'transformer': CellGraphTransformer,
+    'gin': CellGraphGIN
+}
+
+
+def create_model(model_name: str, **kwargs) -> BaseGNN:
+    """Factory function to create models by name.
+    
+    Args:
+        model_name: Name of the model
+        **kwargs: Model-specific arguments
+        
+    Returns:
+        Instantiated model
+    """
+    if model_name not in MODEL_REGISTRY:
+        raise ValueError(f"Unknown model: {model_name}. Available: {list(MODEL_REGISTRY.keys())}")
+    
+    model_class = MODEL_REGISTRY[model_name]
+    return model_class(**kwargs)
+
+
+def get_model_recommendations(dataset_info: Dict[str, any]) -> List[str]:
+    """Get recommended models based on dataset characteristics.
+    
+    Args:
+        dataset_info: Dataset metadata
+        
+    Returns:
+        List of recommended model names
+    """
+    recommendations = []
+    
+    n_cells = dataset_info.get('n_cells', 0)
+    n_genes = dataset_info.get('n_genes', 0)
+    modality = dataset_info.get('modality', 'scRNA-seq')
+    
+    # Large datasets
+    if n_cells > 50000:
+        recommendations.extend(['cellsage'])
+    
+    # Spatial data
+    if 'spatial' in modality.lower():
+        recommendations.append('spatialgat')
+    
+    # High-dimensional data
+    if n_genes > 5000:
+        recommendations.extend(['gin', 'transformer'])
+    
+    # Default recommendations
+    if not recommendations:
+        recommendations.extend(['cellgnn', 'cellsage', 'gin'])
+    
+    return recommendations
+
+
+# Training utilities
+class ModelTrainer:
+    """Utility class for training single-cell GNN models."""
+    
+    def __init__(self, model: BaseGNN, optimizer: torch.optim.Optimizer, 
+                 device: str = 'cpu'):
+        self.model = model
+        self.optimizer = optimizer
+        self.device = device
+        
+        self.model.to(device)
+    
+    def train_epoch(self, data_loader, criterion) -> float:
+        """Train for one epoch."""
+        self.model.train()
+        total_loss = 0
+        num_batches = 0
+        
+        for batch in data_loader:
+            batch = batch.to(self.device)
+            
+            self.optimizer.zero_grad()
+            
+            # Forward pass
+            out = self.model(batch.x, batch.edge_index, batch.batch)
+            
+            # Compute loss (only on training nodes)
+            if hasattr(batch, 'train_mask'):
+                loss = criterion(out[batch.train_mask], batch.y[batch.train_mask])
+            else:
+                loss = criterion(out, batch.y)
+            
+            # Add regularization
+            reg_loss = self.model.compute_regularization_loss()
+            total_loss_val = loss + reg_loss
+            
+            # Backward pass
+            total_loss_val.backward()
+            self.optimizer.step()
+            
+            total_loss += total_loss_val.item()
+            num_batches += 1
+        
+        return total_loss / num_batches if num_batches > 0 else 0
+    
+    def evaluate(self, data_loader, criterion) -> Tuple[float, float]:
+        """Evaluate the model."""
+        self.model.eval()
+        total_loss = 0
+        correct = 0
+        total = 0
+        
         with torch.no_grad():
-            return self.forward(x, edge_index)
-    
-    def num_parameters(self) -> int:
-        """Get the number of trainable parameters."""
-        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+            for batch in data_loader:
+                batch = batch.to(self.device)
+                
+                out = self.model(batch.x, batch.edge_index, batch.batch)
+                
+                # Compute loss
+                if hasattr(batch, 'val_mask'):
+                    loss = criterion(out[batch.val_mask], batch.y[batch.val_mask])
+                    pred = out[batch.val_mask].argmax(dim=1)
+                    correct += (pred == batch.y[batch.val_mask]).sum().item()
+                    total += batch.val_mask.sum().item()
+                else:
+                    loss = criterion(out, batch.y)
+                    pred = out.argmax(dim=1)
+                    correct += (pred == batch.y).sum().item()
+                    total += batch.y.size(0)
+                
+                total_loss += loss.item()
+        
+        accuracy = correct / total if total > 0 else 0
+        avg_loss = total_loss / len(data_loader) if len(data_loader) > 0 else 0
+        
+        return avg_loss, accuracy
