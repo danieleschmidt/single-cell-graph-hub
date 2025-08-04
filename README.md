@@ -28,7 +28,7 @@ pip install single-cell-graph-hub[viz]
 pip install single-cell-graph-hub[full]
 
 # Development installation
-git clone https://github.com/yourusername/single-cell-graph-hub
+git clone https://github.com/danieleschmidt/single-cell-graph-hub
 cd single-cell-graph-hub
 pip install -e ".[dev]"
 ```
@@ -869,7 +869,7 @@ curl -X POST https://api.scgraphhub.org/v1/results \
 ```bibtex
 @article{single_cell_graph_hub,
   title={Single-Cell Graph Hub: A Unified Resource for Graph Neural Networks in Single-Cell Omics},
-  author={Your Name},
+  author={Daniel Schmidt},
   journal={Nature Methods},
   year={2025},
   doi={10.1038/s41592-025-xxxxx}
@@ -889,6 +889,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 ## Resources
 
 - [Documentation](https://scgraphhub.readthedocs.io)
-- [Tutorials](https://github.com/yourusername/single-cell-graph-hub/tutorials)
+- [Tutorials](https://github.com/danieleschmidt/single-cell-graph-hub/tutorials)
 - [Leaderboard](https://scgraphhub.org/leaderboard)
 - [Discussion Forum](https://forum.scgraphhub.org)
