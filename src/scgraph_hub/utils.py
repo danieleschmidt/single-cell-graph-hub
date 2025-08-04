@@ -1,13 +1,84 @@
-"""Utility functions for single-cell graph analysis."""
+"""Comprehensive utility functions and helpers for Single-Cell Graph Hub."""
 
+import logging
+import os
+import sys
+import time
+import functools
 import warnings
-from typing import Optional, Tuple, Dict, Any
+from typing import Dict, List, Optional, Any, Tuple, Union, Callable
+from pathlib import Path
+import json
+import pickle
+import hashlib
+from datetime import datetime
+
+import torch
+import numpy as np
+import pandas as pd
+from torch_geometric.data import Data
+
+logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
     _NUMPY_AVAILABLE = True
 except ImportError:
     _NUMPY_AVAILABLE = False
+
+
+def setup_logging(level: str = 'INFO', log_file: Optional[str] = None) -> logging.Logger:
+    """Setup logging configuration.
+    
+    Args:
+        level: Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
+        log_file: Optional log file path
+        
+    Returns:
+        Configured logger
+    """
+    # Create logger
+    logger = logging.getLogger('scgraph_hub')
+    logger.setLevel(getattr(logging, level.upper()))
+    
+    # Clear existing handlers
+    logger.handlers.clear()
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(getattr(logging, level.upper()))
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # File handler if specified
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(getattr(logging, level.upper()))
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+
+def timer(func: Callable) -> Callable:
+    """Decorator to time function execution."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        
+        execution_time = end_time - start_time
+        logger.debug(f"{func.__name__} executed in {execution_time:.4f} seconds")
+        
+        return result
+    return wrapper
 
 
 def check_dependencies():
