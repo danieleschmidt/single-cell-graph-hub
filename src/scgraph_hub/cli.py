@@ -284,45 +284,87 @@ def quick_start_command():
 
 
 @main.command()
-def check():
+@click.option('--detailed', is_flag=True, help='Show detailed health information')
+@click.option('--json-output', is_flag=True, help='Output results in JSON format')
+def check(detailed, json_output):
     """Check system dependencies and configuration."""
-    click.echo("Single-Cell Graph Hub - System Check")
-    click.echo("=" * 35)
-    click.echo("")
+    import asyncio
     
-    # Check Python version
-    click.echo(f"Python version: {sys.version}")
-    
-    # Check dependencies
-    click.echo("\nDependency check:")
-    deps_available = check_dependencies()
-    if deps_available:
-        click.echo("✅ All core dependencies available")
-    else:
-        click.echo("❌ Missing core dependencies")
-        click.echo("Install with: pip install single-cell-graph-hub[full]")
-    
-    # Test catalog
-    click.echo("\nCatalog check:")
-    try:
-        cat = get_default_catalog()
-        datasets = cat.list_datasets()
-        click.echo(f"✅ Catalog loaded: {len(datasets)} datasets available")
-    except Exception as e:
-        click.echo(f"❌ Catalog error: {e}")
-    
-    # Check core functionality
-    click.echo("\nCore functionality check:")
-    try:
-        from . import _CORE_AVAILABLE
-        if _CORE_AVAILABLE:
-            click.echo("✅ Core functionality available")
+    async def run_check():
+        if json_output:
+            # Import health check functionality
+            try:
+                from .health_checks import run_health_check
+                results = await run_health_check()
+                click.echo(json.dumps(results, indent=2))
+                return
+            except ImportError:
+                click.echo('{"error": "Health check functionality not available"}')
+                return
+        
+        click.echo("Single-Cell Graph Hub - System Check")
+        click.echo("=" * 35)
+        click.echo("")
+        
+        # Check Python version
+        click.echo(f"Python version: {sys.version}")
+        
+        # Check dependencies
+        click.echo("\nDependency check:")
+        deps_available = check_dependencies()
+        if deps_available:
+            click.echo("✅ All core dependencies available")
         else:
-            click.echo("⚠️  Core functionality limited (missing dependencies)")
-    except Exception as e:
-        click.echo(f"❌ Core functionality error: {e}")
+            click.echo("❌ Missing core dependencies")
+            click.echo("Install with: pip install single-cell-graph-hub[full]")
+        
+        # Test catalog
+        click.echo("\nCatalog check:")
+        try:
+            cat = get_default_catalog()
+            datasets = cat.list_datasets()
+            click.echo(f"✅ Catalog loaded: {len(datasets)} datasets available")
+        except Exception as e:
+            click.echo(f"❌ Catalog error: {e}")
+        
+        # Check core functionality
+        click.echo("\nCore functionality check:")
+        try:
+            from . import _CORE_AVAILABLE
+            if _CORE_AVAILABLE:
+                click.echo("✅ Core functionality available")
+            else:
+                click.echo("⚠️  Core functionality limited (missing dependencies)")
+        except Exception as e:
+            click.echo(f"❌ Core functionality error: {e}")
+        
+        # Run detailed health check if requested
+        if detailed:
+            try:
+                from .health_checks import run_health_check
+                click.echo("\nRunning detailed health check...")
+                health_results = await run_health_check()
+                
+                click.echo(f"\nOverall status: {health_results['overall_status'].upper()}")
+                click.echo(f"System uptime: {health_results['uptime_seconds']:.1f}s")
+                
+                click.echo("\nComponent health:")
+                for component, status in health_results['components'].items():
+                    status_icon = "✅" if status['status'] == 'healthy' else "⚠️" if status['status'] == 'degraded' else "❌"
+                    click.echo(f"{status_icon} {component}: {status['status']} - {status['message']}")
+                    
+                    # Show resource details
+                    if component == 'system_resources' and status.get('details'):
+                        details = status['details']
+                        click.echo(f"   Memory: {details.get('memory_percent', 0):.1f}%, CPU: {details.get('cpu_percent', 0):.1f}%")
+            
+            except ImportError:
+                click.echo("\n⚠️  Detailed health checks not available (missing dependencies)")
+        
+        click.echo("\nSystem check complete.")
     
-    click.echo("\nSystem check complete.")
+    # Run the async check
+    asyncio.run(run_check())
 
 
 if __name__ == '__main__':
