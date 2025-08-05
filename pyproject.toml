@@ -121,12 +121,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=scgraph_hub --cov-report=html --cov-report=term-missing --strict-markers"
+addopts = "--strict-markers"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "gpu: marks tests requiring GPU",
+    "asyncio: marks tests as asyncio tests",
 ]
 
 [tool.ruff]
