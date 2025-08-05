@@ -83,31 +83,65 @@ def timer(func: Callable) -> Callable:
 
 def check_dependencies():
     """Check if required dependencies are available."""
-    missing = []
+    dependencies = {}
     
+    # Core dependencies
     try:
         import torch
+        dependencies["torch"] = True
     except ImportError:
-        missing.append("torch")
+        dependencies["torch"] = False
     
     try:
         import torch_geometric
+        dependencies["torch-geometric"] = True
     except ImportError:
-        missing.append("torch-geometric")
+        dependencies["torch-geometric"] = False
     
     try:
         import sklearn
+        dependencies["scikit-learn"] = True
     except ImportError:
-        missing.append("scikit-learn")
+        dependencies["scikit-learn"] = False
     
-    if missing:
-        warnings.warn(
-            f"Missing dependencies: {', '.join(missing)}. "
-            "Install with: pip install single-cell-graph-hub[full]"
-        )
-        return False
+    try:
+        import pandas
+        dependencies["pandas"] = True
+    except ImportError:
+        dependencies["pandas"] = False
     
-    return True
+    try:
+        import numpy
+        dependencies["numpy"] = True
+    except ImportError:
+        dependencies["numpy"] = False
+        
+    # Optional dependencies
+    try:
+        import redis
+        dependencies["redis"] = True
+    except ImportError:
+        dependencies["redis"] = False
+    
+    try:
+        import aioredis
+        dependencies["aioredis"] = True
+    except ImportError:
+        dependencies["aioredis"] = False
+    
+    try:
+        import scanpy
+        dependencies["scanpy"] = True
+    except ImportError:
+        dependencies["scanpy"] = False
+        
+    try:
+        import anndata
+        dependencies["anndata"] = True
+    except ImportError:
+        dependencies["anndata"] = False
+    
+    return dependencies
 
 
 def validate_dataset_config(config: Dict[str, Any]) -> bool:

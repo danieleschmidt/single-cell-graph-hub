@@ -8,7 +8,10 @@ from typing import Dict, List, Optional, Any, Tuple, Union, Callable, Iterator
 from pathlib import Path
 import time
 import gc
+import queue
+import threading
 from dataclasses import dataclass
+from contextlib import contextmanager
 
 import torch
 import torch.nn as nn
@@ -18,6 +21,211 @@ from torch_geometric.utils import to_undirected, remove_self_loops
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+class ResourcePool:
+    """Thread-safe resource pool for managing expensive resources."""
+    
+    def __init__(self, resource_factory: Callable, max_size: int = 10):
+        """Initialize resource pool.
+        
+        Args:
+            resource_factory: Function to create new resources
+            max_size: Maximum pool size
+        """
+        self.resource_factory = resource_factory
+        self.max_size = max_size
+        self.pool = queue.Queue(maxsize=max_size)
+        self.created_count = 0
+        self.lock = threading.Lock()
+    
+    @contextmanager
+    def get_resource(self):
+        """Get a resource from the pool (context manager)."""
+        resource = None
+        try:
+            # Try to get existing resource
+            try:
+                resource = self.pool.get_nowait()
+            except queue.Empty:
+                # Create new resource if pool is empty and under limit
+                with self.lock:
+                    if self.created_count < self.max_size:
+                        resource = self.resource_factory()
+                        self.created_count += 1
+                    else:
+                        # Wait for available resource
+                        resource = self.pool.get()
+            
+            yield resource
+            
+        finally:
+            if resource is not None:
+                # Return resource to pool
+                try:
+                    self.pool.put_nowait(resource)
+                except queue.Full:
+                    # Pool is full, discard resource
+                    pass
+
+
+class ConcurrentProcessor:
+    """Concurrent processing utilities for batch operations."""
+    
+    def __init__(self, max_workers: Optional[int] = None):
+        """Initialize concurrent processor.
+        
+        Args:
+            max_workers: Maximum number of worker threads/processes
+        """
+        self.max_workers = max_workers or min(mp.cpu_count(), 8)
+        self.thread_pool = ThreadPoolExecutor(max_workers=self.max_workers)
+        self.process_pool = ProcessPoolExecutor(max_workers=self.max_workers)
+    
+    async def process_batches_async(self, 
+                                  batches: List[Any], 
+                                  process_func: Callable,
+                                  use_processes: bool = False) -> List[Any]:
+        """Process batches concurrently.
+        
+        Args:
+            batches: List of batch data
+            process_func: Function to process each batch
+            use_processes: Whether to use process pool instead of thread pool
+            
+        Returns:
+            List of processed results
+        """
+        executor = self.process_pool if use_processes else self.thread_pool
+        
+        # Submit all tasks
+        loop = asyncio.get_event_loop()
+        tasks = [
+            loop.run_in_executor(executor, process_func, batch)
+            for batch in batches
+        ]
+        
+        # Wait for completion
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Handle exceptions
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Batch {i} processing failed: {result}")
+                processed_results.append(None)
+            else:
+                processed_results.append(result)
+        
+        return processed_results
+    
+    def process_datasets_parallel(self, 
+                                datasets: List[str], 
+                                process_func: Callable,
+                                max_concurrent: int = 4) -> Dict[str, Any]:
+        """Process multiple datasets in parallel.
+        
+        Args:
+            datasets: List of dataset names
+            process_func: Function to process each dataset
+            max_concurrent: Maximum concurrent processing jobs
+            
+        Returns:
+            Dictionary mapping dataset names to results
+        """
+        results = {}
+        
+        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+            # Submit all tasks
+            future_to_dataset = {
+                executor.submit(process_func, dataset): dataset
+                for dataset in datasets
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_dataset):
+                dataset = future_to_dataset[future]
+                try:
+                    result = future.result()
+                    results[dataset] = result
+                    logger.info(f"Completed processing: {dataset}")
+                except Exception as e:
+                    logger.error(f"Failed to process {dataset}: {e}")
+                    results[dataset] = None
+        
+        return results
+    
+    def __del__(self):
+        """Clean up executors."""
+        if hasattr(self, 'thread_pool'):
+            self.thread_pool.shutdown(wait=False)
+        if hasattr(self, 'process_pool'):
+            self.process_pool.shutdown(wait=False)
+
+
+class LoadBalancer:
+    """Load balancing for distributed processing."""
+    
+    def __init__(self, workers: List[str]):
+        """Initialize load balancer.
+        
+        Args:
+            workers: List of worker identifiers
+        """
+        self.workers = workers
+        self.current_loads = {worker: 0 for worker in workers}
+        self.task_history = []
+        self.lock = threading.Lock()
+    
+    def get_optimal_worker(self, task_weight: float = 1.0) -> str:
+        """Get optimal worker for a task.
+        
+        Args:
+            task_weight: Relative weight of the task
+            
+        Returns:
+            Worker identifier
+        """
+        with self.lock:
+            # Find worker with minimum load
+            min_load = min(self.current_loads.values())
+            optimal_workers = [
+                worker for worker, load in self.current_loads.items()
+                if load == min_load
+            ]
+            
+            # If multiple workers have same load, use round-robin
+            selected_worker = optimal_workers[len(self.task_history) % len(optimal_workers)]
+            
+            # Update load
+            self.current_loads[selected_worker] += task_weight
+            self.task_history.append((selected_worker, task_weight, time.time()))
+            
+            return selected_worker
+    
+    def complete_task(self, worker: str, task_weight: float = 1.0):
+        """Mark task as completed and update load.
+        
+        Args:
+            worker: Worker that completed the task
+            task_weight: Weight of the completed task
+        """
+        with self.lock:
+            self.current_loads[worker] = max(0, self.current_loads[worker] - task_weight)
+    
+    def get_load_stats(self) -> Dict[str, Any]:
+        """Get load balancing statistics."""
+        with self.lock:
+            total_load = sum(self.current_loads.values())
+            avg_load = total_load / len(self.workers) if self.workers else 0
+            
+            return {
+                'workers': len(self.workers),
+                'total_load': total_load,
+                'average_load': avg_load,
+                'current_loads': self.current_loads.copy(),
+                'tasks_completed': len(self.task_history)
+            }
 
 
 @dataclass

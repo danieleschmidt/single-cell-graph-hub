@@ -6,17 +6,232 @@ import pickle
 import hashlib
 import time
 import json
+import asyncio
+import concurrent.futures
 from typing import Dict, List, Optional, Any, Union, Callable, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import OrderedDict
-from functools import wraps
+from functools import wraps, lru_cache
 import threading
+import weakref
+import gzip
+import multiprocessing as mp
 
 import torch
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+class PerformanceOptimizer:
+    """Performance optimization utilities."""
+    
+    def __init__(self):
+        self.cpu_count = mp.cpu_count()
+        self.memory_limit = 8 * 1024**3  # 8GB default
+        self.optimization_cache = {}
+    
+    @staticmethod
+    def optimize_tensor_operations():
+        """Optimize PyTorch tensor operations."""
+        if torch.cuda.is_available():
+            torch.backends.cudnn.benchmark = True
+            torch.backends.cudnn.deterministic = False
+        
+        # Set optimal number of threads - only if not already configured
+        try:
+            num_threads = min(mp.cpu_count(), 8)
+            # Only set if using default values (typically 1)
+            if torch.get_num_threads() == 1:
+                torch.set_num_threads(num_threads)
+            if torch.get_num_interop_threads() == 1:
+                torch.set_num_interop_threads(num_threads)
+        except RuntimeError as e:
+            # Thread settings already configured, skip optimization
+            logger.debug(f"Thread optimization skipped: {e}")
+    
+    @staticmethod
+    def memory_efficient_function(func):
+        """Decorator for memory-efficient function execution."""
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Clear unnecessary GPU cache
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            try:
+                result = func(*args, **kwargs)
+                return result
+            finally:
+                # Clean up after execution
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+        return wrapper
+    
+    def get_optimal_batch_size(self, model_size_mb: float, available_memory_mb: float) -> int:
+        """Calculate optimal batch size based on memory constraints."""
+        # Conservative estimate: model + gradients + activations ≈ 4x model size per sample
+        memory_per_sample = model_size_mb * 4
+        
+        # Leave 25% memory free for system operations
+        usable_memory = available_memory_mb * 0.75
+        
+        # Calculate batch size
+        batch_size = max(1, int(usable_memory / memory_per_sample))
+        
+        # Round to nearest power of 2 for better performance
+        batch_size = 2 ** int(np.log2(batch_size))
+        
+        return min(batch_size, 256)  # Cap at 256 for stability
+
+
+class AdaptiveCache:
+    """Adaptive caching with intelligent eviction policies."""
+    
+    def __init__(self, max_size_mb: int = 1024, compression: bool = True):
+        """Initialize adaptive cache.
+        
+        Args:
+            max_size_mb: Maximum cache size in MB
+            compression: Whether to use compression
+        """
+        self.max_size_bytes = max_size_mb * 1024 * 1024
+        self.current_size = 0
+        self.compression = compression
+        self.cache = OrderedDict()
+        self.access_stats = {}
+        self.lock = threading.RLock()
+        self.hit_count = 0
+        self.miss_count = 0
+    
+    def _compress_data(self, data: bytes) -> bytes:
+        """Compress data using gzip."""
+        if not self.compression:
+            return data
+        return gzip.compress(data)
+    
+    def _decompress_data(self, data: bytes) -> bytes:
+        """Decompress data using gzip."""
+        if not self.compression:
+            return data
+        return gzip.decompress(data)
+    
+    def _calculate_priority(self, key: str) -> float:
+        """Calculate eviction priority (lower = more likely to evict)."""
+        if key not in self.access_stats:
+            return 0.0
+        
+        stats = self.access_stats[key]
+        
+        # Factors: recency, frequency, size
+        recency_score = 1.0 / (time.time() - stats['last_access'] + 1)
+        frequency_score = np.log(stats['access_count'] + 1)
+        size_penalty = 1.0 / (stats['size_bytes'] / 1024 + 1)  # Penalize larger items
+        
+        return recency_score * frequency_score * size_penalty
+    
+    def _evict_items(self, required_space: int):
+        """Evict items to make space."""
+        # Calculate priorities for all items
+        priorities = {}
+        for key in self.cache:
+            priorities[key] = self._calculate_priority(key)
+        
+        # Sort by priority (lowest first for eviction)
+        sorted_items = sorted(priorities.items(), key=lambda x: x[1])
+        
+        freed_space = 0
+        for key, _ in sorted_items:
+            if freed_space >= required_space:
+                break
+            
+            if key in self.cache:
+                freed_space += self.access_stats[key]['size_bytes']
+                del self.cache[key]
+                del self.access_stats[key]
+                self.current_size -= self.access_stats.get(key, {}).get('size_bytes', 0)
+    
+    def get(self, key: str) -> Optional[Any]:
+        """Get item from cache."""
+        with self.lock:
+            if key in self.cache:
+                # Update access statistics
+                self.access_stats[key]['last_access'] = time.time()
+                self.access_stats[key]['access_count'] += 1
+                
+                # Move to end (most recently used)
+                self.cache.move_to_end(key)
+                
+                # Decompress and deserialize
+                compressed_data = self.cache[key]
+                data = self._decompress_data(compressed_data)
+                result = pickle.loads(data)
+                
+                self.hit_count += 1
+                return result
+            
+            self.miss_count += 1
+            return None
+    
+    def put(self, key: str, value: Any, ttl: Optional[int] = None):
+        """Put item in cache."""
+        with self.lock:
+            # Serialize and compress
+            data = pickle.dumps(value)
+            compressed_data = self._compress_data(data)
+            data_size = len(compressed_data)
+            
+            # Check if we need to evict items
+            if self.current_size + data_size > self.max_size_bytes:
+                required_space = self.current_size + data_size - self.max_size_bytes
+                self._evict_items(required_space)
+            
+            # Remove existing entry if it exists
+            if key in self.cache:
+                self.current_size -= self.access_stats[key]['size_bytes']
+                del self.cache[key]
+                del self.access_stats[key]
+            
+            # Add new entry
+            self.cache[key] = compressed_data
+            self.access_stats[key] = {
+                'size_bytes': data_size,
+                'created_at': time.time(),
+                'last_access': time.time(),
+                'access_count': 1,
+                'ttl': ttl
+            }
+            self.current_size += data_size
+    
+    def clear_expired(self):
+        """Clear expired entries."""
+        with self.lock:
+            current_time = time.time()
+            expired_keys = []
+            
+            for key, stats in self.access_stats.items():
+                if stats['ttl'] and current_time - stats['created_at'] > stats['ttl']:
+                    expired_keys.append(key)
+            
+            for key in expired_keys:
+                self.current_size -= self.access_stats[key]['size_bytes']
+                del self.cache[key]
+                del self.access_stats[key]
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics."""
+        total_requests = self.hit_count + self.miss_count
+        hit_rate = self.hit_count / total_requests if total_requests > 0 else 0
+        
+        return {
+            'size_mb': self.current_size / (1024 * 1024),
+            'max_size_mb': self.max_size_bytes / (1024 * 1024),
+            'entries': len(self.cache),
+            'hit_rate': hit_rate,
+            'hit_count': self.hit_count,
+            'miss_count': self.miss_count
+        }
 
 
 class CacheEntry:

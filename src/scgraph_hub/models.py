@@ -5,12 +5,58 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import (
     GCNConv, GATConv, SAGEConv, global_mean_pool, global_max_pool,
-    MessagePassing, Sequential, Linear, ReLU, Dropout, BatchNorm1d,
-    GINConv, TransformerConv, DiffGroupNorm
+    MessagePassing, Sequential, GINConv, TransformerConv
 )
+from torch.nn import Linear, ReLU, Dropout, BatchNorm1d
 from torch_geometric.utils import add_self_loops, degree
 from typing import Optional, Dict, List, Tuple, Union
 import math
+import logging
+import warnings
+from functools import wraps
+
+logger = logging.getLogger(__name__)
+
+
+def validate_inputs(func):
+    """Decorator to validate model inputs."""
+    @wraps(func)
+    def wrapper(self, x, edge_index, *args, **kwargs):
+        try:
+            # Validate x
+            if not isinstance(x, torch.Tensor):
+                raise ValueError(f"x must be a torch.Tensor, got {type(x)}")
+            if x.dim() != 2:
+                raise ValueError(f"x must be 2-dimensional, got shape {x.shape}")
+            if torch.isnan(x).any():
+                warnings.warn("Input features contain NaN values")
+            if torch.isinf(x).any():
+                warnings.warn("Input features contain infinite values")
+            
+            # Validate edge_index
+            if not isinstance(edge_index, torch.Tensor):
+                raise ValueError(f"edge_index must be a torch.Tensor, got {type(edge_index)}")
+            if edge_index.dim() != 2 or edge_index.shape[0] != 2:
+                raise ValueError(f"edge_index must have shape [2, num_edges], got {edge_index.shape}")
+            if edge_index.dtype != torch.long:
+                edge_index = edge_index.long()
+                warnings.warn("Converting edge_index to long dtype")
+            
+            # Check for valid node indices
+            max_node_idx = edge_index.max().item() if edge_index.numel() > 0 else -1
+            if max_node_idx >= x.shape[0]:
+                raise ValueError(f"Edge index contains invalid node index {max_node_idx}, but only {x.shape[0]} nodes exist")
+            
+            return func(self, x, edge_index, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Input validation failed in {func.__name__}: {e}")
+            raise
+    return wrapper
+
+
+class ModelError(Exception):
+    """Custom exception for model-related errors."""
+    pass
 
 
 # Base class for extensibility
@@ -140,13 +186,14 @@ class CellGraphGNN(BaseGNN):
         for i in range(num_layers):
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
     
+    @validate_inputs
     def forward(
         self, 
         x: torch.Tensor, 
         edge_index: torch.Tensor, 
         batch: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        """Forward pass.
+        """Forward pass with comprehensive error handling.
         
         Args:
             x: Node features [num_nodes, input_dim]

@@ -20,7 +20,18 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.stats import zscore
 import umap
 
-from .database import get_dataset_repository
+# Import database functions conditionally
+try:
+    from .database import get_dataset_repository
+    _DATABASE_AVAILABLE = True
+except ImportError:
+    _DATABASE_AVAILABLE = False
+    def get_dataset_repository():
+        """Placeholder when database is not available."""
+        class MockRepository:
+            def log_processing_operation(self, *args, **kwargs):
+                pass
+        return MockRepository()
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +119,689 @@ class PreprocessingPipeline:
                 continue
             
             # Get step parameters
-            step_params = self.parameters.get(step, {})\n            \n            try:\n                # Apply step\n                adata = self.step_functions[step](adata, **step_params)\n                \n                # Track metadata\n                if self.track_metadata:\n                    duration = time.time() - start_time\n                    self.metadata['steps_applied'].append(step)\n                    self.metadata['parameters_used'][step] = step_params\n                    self.metadata['timing'][step] = duration\n                    \n                    # Store dataset statistics after each step\n                    self.metadata['statistics'][f'{step}_result'] = {\n                        'n_obs': adata.n_obs,\n                        'n_vars': adata.n_vars,\n                        'sparsity': self._calculate_sparsity(adata.X) if hasattr(adata, 'X') else None\n                    }\n                \n                logger.info(f\"Completed {step} in {time.time() - start_time:.2f}s\")\n                \n            except Exception as e:\n                logger.error(f\"Error in step {step}: {e}\")\n                if not self.parameters.get('continue_on_error', False):\n                    raise\n        \n        logger.info(\"Preprocessing pipeline completed\")\n        \n        if return_metadata:\n            return adata, self.metadata\n        return adata\n    \n    def _calculate_sparsity(self, X) -> float:\n        \"\"\"Calculate sparsity of data matrix.\"\"\"\n        if issparse(X):\n            return 1.0 - X.nnz / (X.shape[0] * X.shape[1])\n        else:\n            return np.mean(X == 0)\n    \n    # Step implementations\n    def _filter_cells(self, adata, min_genes: int = 200, max_genes: Optional[int] = None,\n                     min_counts: Optional[int] = None, max_counts: Optional[int] = None,\n                     mt_gene_pattern: str = '^MT-', max_mt_pct: float = 20.0):\n        \"\"\"Filter cells based on quality metrics.\"\"\"\n        n_cells_before = adata.n_obs\n        \n        # Calculate basic metrics if not present\n        if 'n_genes_by_counts' not in adata.obs.columns:\n            sc.pp.calculate_qc_metrics(adata, percent_top=None, log1p=False, inplace=True)\n        \n        # Calculate mitochondrial gene percentage\n        adata.var['mt'] = adata.var_names.str.match(mt_gene_pattern, case=False)\n        sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)\n        \n        # Apply filters\n        sc.pp.filter_cells(adata, min_genes=min_genes)\n        \n        if max_genes:\n            sc.pp.filter_cells(adata, max_genes=max_genes)\n        \n        if min_counts:\n            sc.pp.filter_cells(adata, min_counts=min_counts)\n        \n        if max_counts:\n            sc.pp.filter_cells(adata, max_counts=max_counts)\n        \n        # Filter high mitochondrial percentage cells\n        adata = adata[adata.obs.pct_counts_mt < max_mt_pct, :].copy()\n        \n        logger.info(f\"Filtered cells: {n_cells_before} -> {adata.n_obs} ({n_cells_before - adata.n_obs} removed)\")\n        \n        return adata\n    \n    def _filter_genes(self, adata, min_cells: int = 3, max_cells: Optional[int] = None,\n                     min_counts: Optional[int] = None):\n        \"\"\"Filter genes based on expression criteria.\"\"\"\n        n_genes_before = adata.n_vars\n        \n        sc.pp.filter_genes(adata, min_cells=min_cells)\n        \n        if max_cells:\n            sc.pp.filter_genes(adata, max_cells=max_cells)\n        \n        if min_counts:\n            sc.pp.filter_genes(adata, min_counts=min_counts)\n        \n        logger.info(f\"Filtered genes: {n_genes_before} -> {adata.n_vars} ({n_genes_before - adata.n_vars} removed)\")\n        \n        return adata\n    \n    def _calculate_qc_metrics(self, adata, mt_gene_pattern: str = '^MT-',\n                             ribo_gene_pattern: str = '^RP[SL]'):\n        \"\"\"Calculate comprehensive quality control metrics.\"\"\"\n        # Mitochondrial genes\n        adata.var['mt'] = adata.var_names.str.match(mt_gene_pattern, case=False)\n        \n        # Ribosomal genes\n        adata.var['ribo'] = adata.var_names.str.match(ribo_gene_pattern, case=False)\n        \n        # Hemoglobin genes\n        adata.var['hb'] = adata.var_names.str.contains('^HB[^(P)]', case=False)\n        \n        # Calculate metrics\n        sc.pp.calculate_qc_metrics(\n            adata, \n            qc_vars=['mt', 'ribo', 'hb'], \n            percent_top=None, \n            log1p=False, \n            inplace=True\n        )\n        \n        # Additional custom metrics\n        adata.obs['log10_total_counts'] = np.log10(adata.obs['total_counts'])\n        adata.obs['log10_n_genes_by_counts'] = np.log10(adata.obs['n_genes_by_counts'])\n        \n        return adata\n    \n    def _detect_doublets(self, adata, method: str = 'scrublet', **kwargs):\n        \"\"\"Detect potential doublets in the data.\"\"\"\n        try:\n            if method == 'scrublet':\n                import scrublet as scr\n                \n                scrub = scr.Scrublet(adata.X, **kwargs)\n                doublet_scores, predicted_doublets = scrub.scrub_doublets(\n                    min_counts=2, min_cells=3, min_gene_variability_pctl=85,\n                    n_prin_comps=30\n                )\n                \n                adata.obs['doublet_score'] = doublet_scores\n                adata.obs['predicted_doublet'] = predicted_doublets\n                \n                logger.info(f\"Detected {np.sum(predicted_doublets)} potential doublets\")\n                \n            elif method == 'doubletdetection':\n                import doubletdetection as dd\n                \n                clf = dd.BoostClassifier(n_iters=25, use_phenograph=False, **kwargs)\n                doublet_scores = clf.fit(adata.X).predict()\n                \n                adata.obs['doublet_score'] = doublet_scores\n                adata.obs['predicted_doublet'] = doublet_scores > np.percentile(doublet_scores, 90)\n                \n        except ImportError as e:\n            logger.warning(f\"Doublet detection method {method} not available: {e}\")\n        \n        return adata\n    \n    def _normalize_total(self, adata, target_sum: float = 1e4, exclude_highly_expressed: bool = True):\n        \"\"\"Normalize total counts per cell.\"\"\"\n        sc.pp.normalize_total(\n            adata, \n            target_sum=target_sum, \n            exclude_highly_expressed=exclude_highly_expressed\n        )\n        \n        return adata\n    \n    def _log1p_transform(self, adata):\n        \"\"\"Apply log1p transformation.\"\"\"\n        sc.pp.log1p(adata)\n        return adata\n    \n    def _highly_variable_genes(self, adata, n_top_genes: int = 2000, \n                              method: str = 'seurat_v3', batch_key: Optional[str] = None):\n        \"\"\"Identify highly variable genes.\"\"\"\n        if batch_key and batch_key in adata.obs.columns:\n            # Batch-aware HVG selection\n            sc.pp.highly_variable_genes(\n                adata, \n                n_top_genes=n_top_genes, \n                batch_key=batch_key,\n                subset=False\n            )\n        else:\n            sc.pp.highly_variable_genes(\n                adata, \n                n_top_genes=n_top_genes, \n                flavor=method,\n                subset=False\n            )\n        \n        logger.info(f\"Identified {np.sum(adata.var['highly_variable'])} highly variable genes\")\n        \n        return adata\n    \n    def _scale_data(self, adata, max_value: Optional[float] = 10, zero_center: bool = True,\n                   use_highly_variable: bool = True):\n        \"\"\"Scale data to unit variance.\"\"\"\n        # Store raw data\n        adata.raw = adata\n        \n        # Use only highly variable genes if available and requested\n        if use_highly_variable and 'highly_variable' in adata.var.columns:\n            adata = adata[:, adata.var.highly_variable].copy()\n        \n        sc.pp.scale(adata, max_value=max_value, zero_center=zero_center)\n        \n        return adata\n    \n    def _principal_component_analysis(self, adata, n_comps: int = 50, \n                                    use_highly_variable: bool = True,\n                                    svd_solver: str = 'arpack'):\n        \"\"\"Perform principal component analysis.\"\"\"\n        sc.tl.pca(\n            adata, \n            n_comps=n_comps, \n            use_highly_variable=use_highly_variable,\n            svd_solver=svd_solver\n        )\n        \n        return adata\n    \n    def _compute_neighbors(self, adata, n_neighbors: int = 15, n_pcs: Optional[int] = None,\n                          method: str = 'umap', metric: str = 'euclidean'):\n        \"\"\"Compute neighborhood graph.\"\"\"\n        sc.pp.neighbors(\n            adata, \n            n_neighbors=n_neighbors, \n            n_pcs=n_pcs,\n            method=method,\n            metric=metric\n        )\n        \n        return adata\n    \n    def _compute_umap(self, adata, min_dist: float = 0.5, spread: float = 1.0,\n                     n_components: int = 2, alpha: float = 1.0):\n        \"\"\"Compute UMAP embedding.\"\"\"\n        sc.tl.umap(\n            adata,\n            min_dist=min_dist,\n            spread=spread,\n            n_components=n_components,\n            alpha=alpha\n        )\n        \n        return adata\n    \n    def _perform_clustering(self, adata, method: str = 'leiden', \n                           resolution: float = 0.5, **kwargs):\n        \"\"\"Perform clustering analysis.\"\"\"\n        if method == 'leiden':\n            sc.tl.leiden(adata, resolution=resolution, **kwargs)\n        elif method == 'louvain':\n            sc.tl.louvain(adata, resolution=resolution, **kwargs)\n        else:\n            logger.warning(f\"Unknown clustering method: {method}\")\n        \n        return adata\n    \n    def _remove_batch_effects(self, adata, batch_key: str, method: str = 'combat'):\n        \"\"\"Remove batch effects.\"\"\"\n        try:\n            if method == 'combat':\n                sc.pp.combat(adata, key=batch_key)\n            elif method == 'harmony':\n                import scanpy.external as sce\n                sce.pp.harmony_integrate(adata, key=batch_key)\n            elif method == 'scanorama':\n                import scanorama\n                # Implementation for scanorama\n                pass\n            else:\n                logger.warning(f\"Unknown batch correction method: {method}\")\n        \n        except ImportError as e:\n            logger.warning(f\"Batch correction method {method} not available: {e}\")\n        \n        return adata\n    \n    def _impute_missing_values(self, adata, method: str = 'magic', **kwargs):\n        \"\"\"Impute missing values in the data.\"\"\"\n        try:\n            if method == 'magic':\n                import magic\n                magic_op = magic.MAGIC(**kwargs)\n                adata.X = magic_op.fit_transform(adata.X)\n            \n            elif method == 'scimpute':\n                # Placeholder for scImpute implementation\n                logger.warning(\"scImpute not implemented yet\")\n            \n            elif method == 'dca':\n                # Placeholder for DCA implementation\n                logger.warning(\"DCA not implemented yet\")\n        \n        except ImportError as e:\n            logger.warning(f\"Imputation method {method} not available: {e}\")\n        \n        return adata\n    \n    def _detect_cell_cycle(self, adata, organism: str = 'human'):\n        \"\"\"Detect cell cycle phase.\"\"\"\n        try:\n            if organism == 'human':\n                s_genes = ['MCM5', 'PCNA', 'TYMS', 'FEN1', 'MCM2', 'MCM4', 'RRM1', 'UNG', 'GINS2', 'MCM6', 'CDCA7', 'DTL', 'PRIM1', 'UHRF1', 'MLF1IP', 'HELLS', 'RFC2', 'RPA2', 'NASP', 'RAD51AP1', 'GMPS', 'WDR76', 'SLBP', 'CCNE2', 'UBR7', 'POLD3', 'MSH2', 'ATAD2', 'RAD51', 'RRM2', 'CDC45', 'CDC6', 'EXO1', 'TIPIN', 'DSCC1', 'BLM', 'CASP8AP2', 'USP1', 'CLSPN', 'POLA1', 'CHAF1B', 'BRIP1', 'E2F8']\n                g2m_genes = ['HMGB2', 'CDK1', 'NUSAP1', 'UBE2C', 'BIRC5', 'TPX2', 'TOP2A', 'NDC80', 'CKS2', 'NUF2', 'CKS1B', 'MKI67', 'TMPO', 'CENPF', 'TACC3', 'FAM64A', 'SMC4', 'CCNB2', 'CKAP2L', 'CKAP2', 'AURKB', 'BUB1', 'KIF11', 'ANP32E', 'TUBB4B', 'GTSE1', 'KIF20B', 'HJURP', 'CDCA3', 'HN1', 'CDC20', 'TTK', 'CDC25C', 'KIF2C', 'RANGAP1', 'NCAPD2', 'DLGAP5', 'CDCA2', 'CDCA8', 'ECT2', 'KIF23', 'HMMR', 'AURKA', 'PSRC1', 'ANLN', 'LBR', 'CKAP5', 'CENPE', 'CTCF', 'NEK2', 'G2E3', 'GAS2L3', 'CBX5', 'CENPA']\n            elif organism == 'mouse':\n                # Mouse cell cycle genes (converted from human)\n                s_genes = [gene.capitalize() for gene in s_genes]\n                g2m_genes = [gene.capitalize() for gene in g2m_genes]\n            \n            # Score cell cycle\n            sc.tl.score_genes_cell_cycle(adata, s_genes=s_genes, g2m_genes=g2m_genes)\n            \n        except Exception as e:\n            logger.warning(f\"Cell cycle detection failed: {e}\")\n        \n        return adata\n    \n    def _compute_pseudotime(self, adata, method: str = 'dpt', root_cell: Optional[str] = None):\n        \"\"\"Compute pseudotime using diffusion pseudotime.\"\"\"\n        try:\n            if method == 'dpt':\n                # Compute diffusion pseudotime\n                sc.tl.diffmap(adata)\n                \n                if root_cell:\n                    adata.uns['iroot'] = np.flatnonzero(adata.obs_names == root_cell)[0]\n                else:\n                    # Automatically select root\n                    adata.uns['iroot'] = np.argmin(adata.obsm['X_diffmap'][:, 0])\n                \n                sc.tl.dpt(adata)\n            \n            elif method == 'palantir':\n                # Placeholder for Palantir implementation\n                logger.warning(\"Palantir pseudotime not implemented yet\")\n            \n        except Exception as e:\n            logger.warning(f\"Pseudotime computation failed: {e}\")\n        \n        return adata
+            step_params = self.parameters.get(step, {})
+            
+            try:
+                # Apply step
+                adata = self.step_functions[step](adata, **step_params)
+                
+                # Track metadata
+                if self.track_metadata:
+                    duration = time.time() - start_time
+                    self.metadata['steps_applied'].append(step)
+                    self.metadata['parameters_used'][step] = step_params
+                    self.metadata['timing'][step] = duration
+                    
+                    # Store dataset statistics after each step
+                    self.metadata['statistics'][f'{step}_result'] = {
+                        'n_obs': adata.n_obs,
+                        'n_vars': adata.n_vars,
+                        'sparsity': self._calculate_sparsity(adata.X) if hasattr(adata, 'X') else None
+                    }
+                
+                logger.info(f"Completed {step} in {time.time() - start_time:.2f}s")
+                
+            except Exception as e:
+                logger.error(f"Error in step {step}: {e}")
+                if not self.parameters.get('continue_on_error', False):
+                    raise
+        
+        logger.info("Preprocessing pipeline completed")
+        
+        if return_metadata:
+            return adata, self.metadata
+        return adata
+    
+    def _calculate_sparsity(self, X) -> float:
+        """Calculate sparsity of data matrix."""
+        if issparse(X):
+            return 1.0 - X.nnz / (X.shape[0] * X.shape[1])
+        else:
+            return np.mean(X == 0)
+    
+    # Step implementations
+    def _filter_cells(self, adata, min_genes: int = 200, max_genes: Optional[int] = None,
+                     min_counts: Optional[int] = None, max_counts: Optional[int] = None,
+                     mt_gene_pattern: str = '^MT-', max_mt_pct: float = 20.0):
+        """Filter cells based on quality metrics."""
+        n_cells_before = adata.n_obs
+        
+        # Calculate basic metrics if not present
+        if 'n_genes_by_counts' not in adata.obs.columns:
+            sc.pp.calculate_qc_metrics(adata, percent_top=None, log1p=False, inplace=True)
+        
+        # Calculate mitochondrial gene percentage
+        adata.var['mt'] = adata.var_names.str.match(mt_gene_pattern, case=False)
+        sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
+        
+        # Apply filters
+        sc.pp.filter_cells(adata, min_genes=min_genes)
+        
+        if max_genes:
+            sc.pp.filter_cells(adata, max_genes=max_genes)
+        
+        if min_counts:
+            sc.pp.filter_cells(adata, min_counts=min_counts)
+        
+        if max_counts:
+            sc.pp.filter_cells(adata, max_counts=max_counts)
+        
+        # Filter high mitochondrial percentage cells
+        adata = adata[adata.obs.pct_counts_mt < max_mt_pct, :].copy()
+        
+        logger.info(f"Filtered cells: {n_cells_before} -> {adata.n_obs} ({n_cells_before - adata.n_obs} removed)")
+        
+        return adata
+    
+    def _filter_genes(self, adata, min_cells: int = 3, max_cells: Optional[int] = None,
+                     min_counts: Optional[int] = None):
+        """Filter genes based on expression criteria."""
+        n_genes_before = adata.n_vars
+        
+        sc.pp.filter_genes(adata, min_cells=min_cells)
+        
+        if max_cells:
+            sc.pp.filter_genes(adata, max_cells=max_cells)
+        
+        if min_counts:
+            sc.pp.filter_genes(adata, min_counts=min_counts)
+        
+        logger.info(f"Filtered genes: {n_genes_before} -> {adata.n_vars} ({n_genes_before - adata.n_vars} removed)")
+        
+        return adata
+    
+    def _calculate_qc_metrics(self, adata, mt_gene_pattern: str = '^MT-',
+                             ribo_gene_pattern: str = '^RP[SL]'):
+        """Calculate comprehensive quality control metrics."""
+        # Mitochondrial genes
+        adata.var['mt'] = adata.var_names.str.match(mt_gene_pattern, case=False)
+        
+        # Ribosomal genes
+        adata.var['ribo'] = adata.var_names.str.match(ribo_gene_pattern, case=False)
+        
+        # Hemoglobin genes
+        adata.var['hb'] = adata.var_names.str.contains('^HB[^(P)]', case=False)
+        
+        # Calculate metrics
+        sc.pp.calculate_qc_metrics(
+            adata, 
+            qc_vars=['mt', 'ribo', 'hb'], 
+            percent_top=None, 
+            log1p=False, 
+            inplace=True
+        )
+        
+        # Additional custom metrics
+        adata.obs['log10_total_counts'] = np.log10(adata.obs['total_counts'])
+        adata.obs['log10_n_genes_by_counts'] = np.log10(adata.obs['n_genes_by_counts'])
+        
+        return adata
+    
+    def _detect_doublets(self, adata, method: str = 'scrublet', **kwargs):
+        """Detect potential doublets in the data."""
+        try:
+            if method == 'scrublet':
+                import scrublet as scr
+                
+                scrub = scr.Scrublet(adata.X, **kwargs)
+                doublet_scores, predicted_doublets = scrub.scrub_doublets(
+                    min_counts=2, min_cells=3, min_gene_variability_pctl=85,
+                    n_prin_comps=30
+                )
+                
+                adata.obs['doublet_score'] = doublet_scores
+                adata.obs['predicted_doublet'] = predicted_doublets
+                
+                logger.info(f"Detected {np.sum(predicted_doublets)} potential doublets")
+                
+            elif method == 'doubletdetection':
+                import doubletdetection as dd
+                
+                clf = dd.BoostClassifier(n_iters=25, use_phenograph=False, **kwargs)
+                doublet_scores = clf.fit(adata.X).predict()
+                
+                adata.obs['doublet_score'] = doublet_scores
+                adata.obs['predicted_doublet'] = doublet_scores > np.percentile(doublet_scores, 90)
+                
+        except ImportError as e:
+            logger.warning(f"Doublet detection method {method} not available: {e}")
+        
+        return adata
+    
+    def _normalize_total(self, adata, target_sum: float = 1e4, exclude_highly_expressed: bool = True):
+        """Normalize total counts per cell."""
+        sc.pp.normalize_total(
+            adata, 
+            target_sum=target_sum, 
+            exclude_highly_expressed=exclude_highly_expressed
+        )
+        
+        return adata
+    
+    def _log1p_transform(self, adata):
+        """Apply log1p transformation."""
+        sc.pp.log1p(adata)
+        return adata
+    
+    def _highly_variable_genes(self, adata, n_top_genes: int = 2000, 
+                              method: str = 'seurat_v3', batch_key: Optional[str] = None):
+        """Identify highly variable genes."""
+        if batch_key and batch_key in adata.obs.columns:
+            # Batch-aware HVG selection
+            sc.pp.highly_variable_genes(
+                adata, 
+                n_top_genes=n_top_genes, 
+                batch_key=batch_key,
+                subset=False
+            )
+        else:
+            sc.pp.highly_variable_genes(
+                adata, 
+                n_top_genes=n_top_genes, 
+                flavor=method,
+                subset=False
+            )
+        
+        logger.info(f"Identified {np.sum(adata.var['highly_variable'])} highly variable genes")
+        
+        return adata
+    
+    def _scale_data(self, adata, max_value: Optional[float] = 10, zero_center: bool = True,
+                   use_highly_variable: bool = True):
+        """Scale data to unit variance."""
+        # Store raw data
+        adata.raw = adata
+        
+        # Use only highly variable genes if available and requested
+        if use_highly_variable and 'highly_variable' in adata.var.columns:
+            adata = adata[:, adata.var.highly_variable].copy()
+        
+        sc.pp.scale(adata, max_value=max_value, zero_center=zero_center)
+        
+        return adata
+    
+    def _principal_component_analysis(self, adata, n_comps: int = 50, 
+                                    use_highly_variable: bool = True,
+                                    svd_solver: str = 'arpack'):
+        """Perform principal component analysis."""
+        sc.tl.pca(
+            adata, 
+            n_comps=n_comps, 
+            use_highly_variable=use_highly_variable,
+            svd_solver=svd_solver
+        )
+        
+        return adata
+    
+    def _compute_neighbors(self, adata, n_neighbors: int = 15, n_pcs: Optional[int] = None,
+                          method: str = 'umap', metric: str = 'euclidean'):
+        """Compute neighborhood graph."""
+        sc.pp.neighbors(
+            adata, 
+            n_neighbors=n_neighbors, 
+            n_pcs=n_pcs,
+            method=method,
+            metric=metric
+        )
+        
+        return adata
+    
+    def _compute_umap(self, adata, min_dist: float = 0.5, spread: float = 1.0,
+                     n_components: int = 2, alpha: float = 1.0):
+        """Compute UMAP embedding."""
+        sc.tl.umap(
+            adata,
+            min_dist=min_dist,
+            spread=spread,
+            n_components=n_components,
+            alpha=alpha
+        )
+        
+        return adata
+    
+    def _perform_clustering(self, adata, method: str = 'leiden', 
+                           resolution: float = 0.5, **kwargs):
+        """Perform clustering analysis."""
+        if method == 'leiden':
+            sc.tl.leiden(adata, resolution=resolution, **kwargs)
+        elif method == 'louvain':
+            sc.tl.louvain(adata, resolution=resolution, **kwargs)
+        else:
+            logger.warning(f"Unknown clustering method: {method}")
+        
+        return adata
+    
+    def _remove_batch_effects(self, adata, batch_key: str, method: str = 'combat'):
+        """Remove batch effects."""
+        try:
+            if method == 'combat':
+                sc.pp.combat(adata, key=batch_key)
+            elif method == 'harmony':
+                import scanpy.external as sce
+                sce.pp.harmony_integrate(adata, key=batch_key)
+            elif method == 'scanorama':
+                import scanorama
+                # Implementation for scanorama
+                pass
+            else:
+                logger.warning(f"Unknown batch correction method: {method}")
+        
+        except ImportError as e:
+            logger.warning(f"Batch correction method {method} not available: {e}")
+        
+        return adata
+    
+    def _impute_missing_values(self, adata, method: str = 'magic', **kwargs):
+        """Impute missing values in the data."""
+        try:
+            if method == 'magic':
+                import magic
+                magic_op = magic.MAGIC(**kwargs)
+                adata.X = magic_op.fit_transform(adata.X)
+            
+            elif method == 'scimpute':
+                # Placeholder for scImpute implementation
+                logger.warning("scImpute not implemented yet")
+            
+            elif method == 'dca':
+                # Placeholder for DCA implementation
+                logger.warning("DCA not implemented yet")
+        
+        except ImportError as e:
+            logger.warning(f"Imputation method {method} not available: {e}")
+        
+        return adata
+    
+    def _detect_cell_cycle(self, adata, organism: str = 'human'):
+        """Detect cell cycle phase."""
+        try:
+            if organism == 'human':
+                s_genes = ['MCM5', 'PCNA', 'TYMS', 'FEN1', 'MCM2', 'MCM4', 'RRM1', 'UNG', 'GINS2', 'MCM6', 'CDCA7', 'DTL', 'PRIM1', 'UHRF1', 'MLF1IP', 'HELLS', 'RFC2', 'RPA2', 'NASP', 'RAD51AP1', 'GMPS', 'WDR76', 'SLBP', 'CCNE2', 'UBR7', 'POLD3', 'MSH2', 'ATAD2', 'RAD51', 'RRM2', 'CDC45', 'CDC6', 'EXO1', 'TIPIN', 'DSCC1', 'BLM', 'CASP8AP2', 'USP1', 'CLSPN', 'POLA1', 'CHAF1B', 'BRIP1', 'E2F8']
+                g2m_genes = ['HMGB2', 'CDK1', 'NUSAP1', 'UBE2C', 'BIRC5', 'TPX2', 'TOP2A', 'NDC80', 'CKS2', 'NUF2', 'CKS1B', 'MKI67', 'TMPO', 'CENPF', 'TACC3', 'FAM64A', 'SMC4', 'CCNB2', 'CKAP2L', 'CKAP2', 'AURKB', 'BUB1', 'KIF11', 'ANP32E', 'TUBB4B', 'GTSE1', 'KIF20B', 'HJURP', 'CDCA3', 'HN1', 'CDC20', 'TTK', 'CDC25C', 'KIF2C', 'RANGAP1', 'NCAPD2', 'DLGAP5', 'CDCA2', 'CDCA8', 'ECT2', 'KIF23', 'HMMR', 'AURKA', 'PSRC1', 'ANLN', 'LBR', 'CKAP5', 'CENPE', 'CTCF', 'NEK2', 'G2E3', 'GAS2L3', 'CBX5', 'CENPA']
+            elif organism == 'mouse':
+                # Mouse cell cycle genes (converted from human)
+                s_genes = [gene.capitalize() for gene in s_genes]
+                g2m_genes = [gene.capitalize() for gene in g2m_genes]
+            
+            # Score cell cycle
+            sc.tl.score_genes_cell_cycle(adata, s_genes=s_genes, g2m_genes=g2m_genes)
+            
+        except Exception as e:
+            logger.warning(f"Cell cycle detection failed: {e}")
+        
+        return adata
+    
+    def _compute_pseudotime(self, adata, method: str = 'dpt', root_cell: Optional[str] = None):
+        """Compute pseudotime using diffusion pseudotime."""
+        try:
+            if method == 'dpt':
+                # Compute diffusion pseudotime
+                sc.tl.diffmap(adata)
+                
+                if root_cell:
+                    adata.uns['iroot'] = np.flatnonzero(adata.obs_names == root_cell)[0]
+                else:
+                    # Automatically select root
+                    adata.uns['iroot'] = np.argmin(adata.obsm['X_diffmap'][:, 0])
+                
+                sc.tl.dpt(adata)
+            
+            elif method == 'palantir':
+                # Placeholder for Palantir implementation
+                logger.warning("Palantir pseudotime not implemented yet")
+            
+        except Exception as e:
+            logger.warning(f"Pseudotime computation failed: {e}")
+        
+        return adata
 
 
-class GraphConstructor:\n    \"\"\"Constructs various types of graphs from processed single-cell data.\"\"\"\n    \n    def __init__(self, method: str = 'knn', **parameters):\n        \"\"\"Initialize graph constructor.\n        \n        Args:\n            method: Graph construction method\n            **parameters: Method-specific parameters\n        \"\"\"\n        self.method = method\n        self.parameters = parameters\n        \n        self.methods = {\n            'knn': self._build_knn_graph,\n            'radius': self._build_radius_graph,\n            'spatial': self._build_spatial_graph,\n            'correlation': self._build_correlation_graph,\n            'coexpression': self._build_coexpression_graph,\n            'regulatory': self._build_regulatory_graph\n        }\n    \n    def build_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build graph from AnnData object.\n        \n        Args:\n            adata: Processed AnnData object\n            return_edge_weights: Whether to return edge weights\n            \n        Returns:\n            Edge index tensor and optionally edge weights\n        \"\"\"\n        if self.method not in self.methods:\n            raise ValueError(f\"Unknown graph construction method: {self.method}\")\n        \n        return self.methods[self.method](adata, return_edge_weights)\n    \n    def _build_knn_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build k-nearest neighbor graph.\"\"\"\n        k = self.parameters.get('k', 15)\n        metric = self.parameters.get('metric', 'euclidean')\n        use_rep = self.parameters.get('use_rep', 'X_pca')\n        \n        # Get representation\n        if use_rep in adata.obsm:\n            X = adata.obsm[use_rep]\n        else:\n            X = adata.X.toarray() if issparse(adata.X) else adata.X\n        \n        # Compute k-NN\n        nbrs = NearestNeighbors(n_neighbors=k+1, metric=metric).fit(X)\n        distances, indices = nbrs.kneighbors(X)\n        \n        # Build edge list\n        edge_list = []\n        edge_weights = []\n        \n        for i in range(len(indices)):\n            for j in range(1, len(indices[i])):  # Skip self\n                neighbor_idx = indices[i][j]\n                edge_list.extend([(i, neighbor_idx), (neighbor_idx, i)])  # Undirected\n                \n                if return_edge_weights:\n                    weight = 1.0 / (1.0 + distances[i][j])  # Distance to similarity\n                    edge_weights.extend([weight, weight])\n        \n        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()\n        \n        if return_edge_weights:\n            edge_weights = torch.tensor(edge_weights, dtype=torch.float)\n            return edge_index, edge_weights\n        \n        return edge_index, None\n    \n    def _build_radius_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build radius-based graph.\"\"\"\n        radius = self.parameters.get('radius', 1.0)\n        metric = self.parameters.get('metric', 'euclidean')\n        use_rep = self.parameters.get('use_rep', 'X_pca')\n        \n        # Get representation\n        if use_rep in adata.obsm:\n            X = adata.obsm[use_rep]\n        else:\n            X = adata.X.toarray() if issparse(adata.X) else adata.X\n        \n        # Compute radius neighbors\n        nbrs = NearestNeighbors(radius=radius, metric=metric).fit(X)\n        distances, indices = nbrs.radius_neighbors(X)\n        \n        edge_list = []\n        edge_weights = []\n        \n        for i, neighbors in enumerate(indices):\n            for j, neighbor_idx in enumerate(neighbors):\n                if i != neighbor_idx:  # Skip self\n                    edge_list.append((i, neighbor_idx))\n                    \n                    if return_edge_weights:\n                        weight = 1.0 / (1.0 + distances[i][j])\n                        edge_weights.append(weight)\n        \n        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()\n        \n        if return_edge_weights:\n            edge_weights = torch.tensor(edge_weights, dtype=torch.float)\n            return edge_index, edge_weights\n        \n        return edge_index, None\n    \n    def _build_spatial_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build spatial proximity graph.\"\"\"\n        if 'spatial' not in adata.obsm:\n            raise ValueError(\"Spatial coordinates not found in adata.obsm['spatial']\")\n        \n        coords = adata.obsm['spatial']\n        max_distance = self.parameters.get('max_distance', 150)\n        method = self.parameters.get('method', 'radius')  # 'radius' or 'delaunay'\n        \n        if method == 'radius':\n            # Radius-based spatial graph\n            nbrs = NearestNeighbors(radius=max_distance).fit(coords)\n            distances, indices = nbrs.radius_neighbors(coords)\n            \n            edge_list = []\n            edge_weights = []\n            \n            for i, neighbors in enumerate(indices):\n                for j, neighbor_idx in enumerate(neighbors):\n                    if i != neighbor_idx:\n                        edge_list.append((i, neighbor_idx))\n                        \n                        if return_edge_weights:\n                            weight = 1.0 / (1.0 + distances[i][j])\n                            edge_weights.append(weight)\n        \n        elif method == 'delaunay':\n            from scipy.spatial import Delaunay\n            \n            # Delaunay triangulation\n            tri = Delaunay(coords)\n            \n            edge_list = []\n            edge_weights = []\n            \n            for simplex in tri.simplices:\n                for i in range(len(simplex)):\n                    for j in range(i+1, len(simplex)):\n                        edge_list.extend([(simplex[i], simplex[j]), (simplex[j], simplex[i])])\n                        \n                        if return_edge_weights:\n                            dist = np.linalg.norm(coords[simplex[i]] - coords[simplex[j]])\n                            if dist <= max_distance:  # Filter long edges\n                                weight = 1.0 / (1.0 + dist)\n                                edge_weights.extend([weight, weight])\n                            else:\n                                edge_list = edge_list[:-2]  # Remove last two edges\n        \n        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()\n        \n        if return_edge_weights:\n            edge_weights = torch.tensor(edge_weights, dtype=torch.float)\n            return edge_index, edge_weights\n        \n        return edge_index, None\n    \n    def _build_correlation_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build correlation-based graph.\"\"\"\n        threshold = self.parameters.get('threshold', 0.7)\n        method = self.parameters.get('method', 'pearson')\n        \n        # Get expression data\n        X = adata.X.toarray() if issparse(adata.X) else adata.X\n        \n        # Compute correlation matrix\n        if method == 'pearson':\n            corr_matrix = np.corrcoef(X)\n        elif method == 'spearman':\n            from scipy.stats import spearmanr\n            corr_matrix, _ = spearmanr(X, axis=1)\n        else:\n            raise ValueError(f\"Unknown correlation method: {method}\")\n        \n        # Create edges where correlation > threshold\n        edge_indices = np.where(corr_matrix > threshold)\n        \n        # Remove self-loops\n        mask = edge_indices[0] != edge_indices[1]\n        edge_list = list(zip(edge_indices[0][mask], edge_indices[1][mask]))\n        \n        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()\n        \n        if return_edge_weights:\n            edge_weights = torch.tensor(corr_matrix[edge_indices[0][mask], edge_indices[1][mask]], dtype=torch.float)\n            return edge_index, edge_weights\n        \n        return edge_index, None\n    \n    def _build_coexpression_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build gene coexpression graph.\"\"\"\n        # This would build edges between genes based on coexpression patterns\n        # Implementation depends on specific requirements\n        logger.warning(\"Coexpression graph construction not fully implemented\")\n        return torch.empty((2, 0), dtype=torch.long), None\n    \n    def _build_regulatory_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:\n        \"\"\"Build gene regulatory network graph.\"\"\"\n        # This would incorporate prior knowledge about gene regulatory relationships\n        # Implementation would require external databases (e.g., STRING, RegNetwork)\n        logger.warning(\"Regulatory graph construction not fully implemented\")\n        return torch.empty((2, 0), dtype=torch.long), None
+class GraphConstructor:
+    """Constructs various types of graphs from processed single-cell data."""
+    
+    def __init__(self, method: str = 'knn', **parameters):
+        """Initialize graph constructor.
+        
+        Args:
+            method: Graph construction method
+            **parameters: Method-specific parameters
+        """
+        self.method = method
+        self.parameters = parameters
+        
+        self.methods = {
+            'knn': self._build_knn_graph,
+            'radius': self._build_radius_graph,
+            'spatial': self._build_spatial_graph,
+            'correlation': self._build_correlation_graph,
+            'coexpression': self._build_coexpression_graph,
+            'regulatory': self._build_regulatory_graph
+        }
+    
+    def build_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build graph from AnnData object.
+        
+        Args:
+            adata: Processed AnnData object
+            return_edge_weights: Whether to return edge weights
+            
+        Returns:
+            Edge index tensor and optionally edge weights
+        """
+        if self.method not in self.methods:
+            raise ValueError(f"Unknown graph construction method: {self.method}")
+        
+        return self.methods[self.method](adata, return_edge_weights)
+    
+    def _build_knn_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build k-nearest neighbor graph."""
+        k = self.parameters.get('k', 15)
+        metric = self.parameters.get('metric', 'euclidean')
+        use_rep = self.parameters.get('use_rep', 'X_pca')
+        
+        # Get representation
+        if use_rep in adata.obsm:
+            X = adata.obsm[use_rep]
+        else:
+            X = adata.X.toarray() if issparse(adata.X) else adata.X
+        
+        # Compute k-NN
+        nbrs = NearestNeighbors(n_neighbors=k+1, metric=metric).fit(X)
+        distances, indices = nbrs.kneighbors(X)
+        
+        # Build edge list
+        edge_list = []
+        edge_weights = []
+        
+        for i in range(len(indices)):
+            for j in range(1, len(indices[i])):  # Skip self
+                neighbor_idx = indices[i][j]
+                edge_list.extend([(i, neighbor_idx), (neighbor_idx, i)])  # Undirected
+                
+                if return_edge_weights:
+                    weight = 1.0 / (1.0 + distances[i][j])  # Distance to similarity
+                    edge_weights.extend([weight, weight])
+        
+        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+        
+        if return_edge_weights:
+            edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+            return edge_index, edge_weights
+        
+        return edge_index, None
+    
+    def _build_radius_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build radius-based graph."""
+        radius = self.parameters.get('radius', 1.0)
+        metric = self.parameters.get('metric', 'euclidean')
+        use_rep = self.parameters.get('use_rep', 'X_pca')
+        
+        # Get representation
+        if use_rep in adata.obsm:
+            X = adata.obsm[use_rep]
+        else:
+            X = adata.X.toarray() if issparse(adata.X) else adata.X
+        
+        # Compute radius neighbors
+        nbrs = NearestNeighbors(radius=radius, metric=metric).fit(X)
+        distances, indices = nbrs.radius_neighbors(X)
+        
+        edge_list = []
+        edge_weights = []
+        
+        for i, neighbors in enumerate(indices):
+            for j, neighbor_idx in enumerate(neighbors):
+                if i != neighbor_idx:  # Skip self
+                    edge_list.append((i, neighbor_idx))
+                    
+                    if return_edge_weights:
+                        weight = 1.0 / (1.0 + distances[i][j])
+                        edge_weights.append(weight)
+        
+        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+        
+        if return_edge_weights:
+            edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+            return edge_index, edge_weights
+        
+        return edge_index, None
+    
+    def _build_spatial_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build spatial proximity graph."""
+        if 'spatial' not in adata.obsm:
+            raise ValueError("Spatial coordinates not found in adata.obsm['spatial']")
+        
+        coords = adata.obsm['spatial']
+        max_distance = self.parameters.get('max_distance', 150)
+        method = self.parameters.get('method', 'radius')  # 'radius' or 'delaunay'
+        
+        if method == 'radius':
+            # Radius-based spatial graph
+            nbrs = NearestNeighbors(radius=max_distance).fit(coords)
+            distances, indices = nbrs.radius_neighbors(coords)
+            
+            edge_list = []
+            edge_weights = []
+            
+            for i, neighbors in enumerate(indices):
+                for j, neighbor_idx in enumerate(neighbors):
+                    if i != neighbor_idx:
+                        edge_list.append((i, neighbor_idx))
+                        
+                        if return_edge_weights:
+                            weight = 1.0 / (1.0 + distances[i][j])
+                            edge_weights.append(weight)
+        
+        elif method == 'delaunay':
+            from scipy.spatial import Delaunay
+            
+            # Delaunay triangulation
+            tri = Delaunay(coords)
+            
+            edge_list = []
+            edge_weights = []
+            
+            for simplex in tri.simplices:
+                for i in range(len(simplex)):
+                    for j in range(i+1, len(simplex)):
+                        edge_list.extend([(simplex[i], simplex[j]), (simplex[j], simplex[i])])
+                        
+                        if return_edge_weights:
+                            dist = np.linalg.norm(coords[simplex[i]] - coords[simplex[j]])
+                            if dist <= max_distance:  # Filter long edges
+                                weight = 1.0 / (1.0 + dist)
+                                edge_weights.extend([weight, weight])
+                            else:
+                                edge_list = edge_list[:-2]  # Remove last two edges
+        
+        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+        
+        if return_edge_weights:
+            edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+            return edge_index, edge_weights
+        
+        return edge_index, None
+    
+    def _build_correlation_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build correlation-based graph."""
+        threshold = self.parameters.get('threshold', 0.7)
+        method = self.parameters.get('method', 'pearson')
+        
+        # Get expression data
+        X = adata.X.toarray() if issparse(adata.X) else adata.X
+        
+        # Compute correlation matrix
+        if method == 'pearson':
+            corr_matrix = np.corrcoef(X)
+        elif method == 'spearman':
+            from scipy.stats import spearmanr
+            corr_matrix, _ = spearmanr(X, axis=1)
+        else:
+            raise ValueError(f"Unknown correlation method: {method}")
+        
+        # Create edges where correlation > threshold
+        edge_indices = np.where(corr_matrix > threshold)
+        
+        # Remove self-loops
+        mask = edge_indices[0] != edge_indices[1]
+        edge_list = list(zip(edge_indices[0][mask], edge_indices[1][mask]))
+        
+        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+        
+        if return_edge_weights:
+            edge_weights = torch.tensor(corr_matrix[edge_indices[0][mask], edge_indices[1][mask]], dtype=torch.float)
+            return edge_index, edge_weights
+        
+        return edge_index, None
+    
+    def _build_coexpression_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build gene coexpression graph."""
+        # This would build edges between genes based on coexpression patterns
+        # Implementation depends on specific requirements
+        logger.warning("Coexpression graph construction not fully implemented")
+        return torch.empty((2, 0), dtype=torch.long), None
+    
+    def _build_regulatory_graph(self, adata, return_edge_weights: bool = True) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Build gene regulatory network graph."""
+        # This would incorporate prior knowledge about gene regulatory relationships
+        # Implementation would require external databases (e.g., STRING, RegNetwork)
+        logger.warning("Regulatory graph construction not fully implemented")
+        return torch.empty((2, 0), dtype=torch.long), None
 
 
-# Main preprocessing function\ndef preprocess_dataset(dataset_name: str, \n                     input_path: str,\n                     output_path: str,\n                     steps: Optional[List[str]] = None,\n                     parameters: Optional[Dict[str, Any]] = None,\n                     graph_method: str = 'knn',\n                     graph_parameters: Optional[Dict[str, Any]] = None,\n                     save_intermediate: bool = False) -> Dict[str, Any]:\n    \"\"\"Complete preprocessing pipeline for a dataset.\n    \n    Args:\n        dataset_name: Name of the dataset\n        input_path: Path to input H5AD file\n        output_path: Path for output processed file\n        steps: Preprocessing steps to apply\n        parameters: Parameters for preprocessing steps\n        graph_method: Graph construction method\n        graph_parameters: Parameters for graph construction\n        save_intermediate: Whether to save intermediate results\n        \n    Returns:\n        Processing metadata and statistics\n    \"\"\"\n    import time\n    start_time = time.time()\n    \n    logger.info(f\"Starting preprocessing for dataset: {dataset_name}\")\n    \n    try:\n        # Load data\n        adata = sc.read_h5ad(input_path)\n        logger.info(f\"Loaded dataset: {adata.n_obs} cells, {adata.n_vars} genes\")\n        \n        # Initialize preprocessing pipeline\n        pipeline = PreprocessingPipeline(steps=steps, parameters=parameters or {})\n        \n        # Run preprocessing\n        adata, preprocessing_metadata = pipeline.process(adata, return_metadata=True)\n        \n        # Construct graph\n        graph_constructor = GraphConstructor(method=graph_method, **(graph_parameters or {}))\n        edge_index, edge_weights = graph_constructor.build_graph(adata)\n        \n        # Create PyTorch Geometric Data object\n        from torch_geometric.data import Data\n        \n        # Get features\n        if 'X_pca' in adata.obsm:\n            x = torch.FloatTensor(adata.obsm['X_pca'])\n        else:\n            x = torch.FloatTensor(adata.X.toarray() if issparse(adata.X) else adata.X)\n        \n        # Get labels (if available)\n        y = None\n        if 'cell_type' in adata.obs.columns:\n            from sklearn.preprocessing import LabelEncoder\n            le = LabelEncoder()\n            y = torch.LongTensor(le.fit_transform(adata.obs['cell_type']))\n        \n        # Create Data object\n        data = Data(x=x, edge_index=edge_index, edge_attr=edge_weights, y=y)\n        \n        # Save processed data\n        torch.save(data, output_path)\n        \n        # Save AnnData if requested\n        if save_intermediate:\n            adata_path = output_path.replace('.pt', '_adata.h5ad')\n            adata.write(adata_path)\n        \n        # Collect final metadata\n        processing_time = time.time() - start_time\n        \n        final_metadata = {\n            'dataset_name': dataset_name,\n            'processing_time_seconds': processing_time,\n            'preprocessing_steps': preprocessing_metadata['steps_applied'],\n            'preprocessing_parameters': preprocessing_metadata['parameters_used'],\n            'graph_method': graph_method,\n            'graph_parameters': graph_parameters or {},\n            'final_statistics': {\n                'n_cells': adata.n_obs,\n                'n_genes': adata.n_vars,\n                'n_edges': edge_index.shape[1],\n                'graph_density': edge_index.shape[1] / (adata.n_obs * (adata.n_obs - 1)),\n                'feature_dim': x.shape[1] if x is not None else 0,\n                'has_labels': y is not None,\n                'n_classes': len(torch.unique(y)) if y is not None else 0\n            },\n            'file_paths': {\n                'input': input_path,\n                'output': output_path,\n                'adata': adata_path if save_intermediate else None\n            }\n        }\n        \n        # Log to database if available\n        try:\n            repo = get_dataset_repository()\n            repo.log_processing_operation(\n                dataset_name=dataset_name,\n                operation='preprocess',\n                status='completed',\n                duration_seconds=processing_time,\n                parameters={\n                    'preprocessing_steps': steps,\n                    'preprocessing_parameters': parameters,\n                    'graph_method': graph_method,\n                    'graph_parameters': graph_parameters\n                },\n                results=final_metadata['final_statistics']\n            )\n        except Exception as e:\n            logger.warning(f\"Failed to log to database: {e}\")\n        \n        logger.info(f\"Preprocessing completed successfully in {processing_time:.2f}s\")\n        \n        return final_metadata\n        \n    except Exception as e:\n        logger.error(f\"Preprocessing failed: {e}\")\n        \n        # Log failure to database\n        try:\n            repo = get_dataset_repository()\n            repo.log_processing_operation(\n                dataset_name=dataset_name,\n                operation='preprocess',\n                status='failed',\n                error_message=str(e)\n            )\n        except Exception:\n            pass\n        \n        raise
+# Main preprocessing function
+def preprocess_dataset(dataset_name: str, 
+                     input_path: str,
+                     output_path: str,
+                     steps: Optional[List[str]] = None,
+                     parameters: Optional[Dict[str, Any]] = None,
+                     graph_method: str = 'knn',
+                     graph_parameters: Optional[Dict[str, Any]] = None,
+                     save_intermediate: bool = False) -> Dict[str, Any]:
+    """Complete preprocessing pipeline for a dataset.
+    
+    Args:
+        dataset_name: Name of the dataset
+        input_path: Path to input H5AD file
+        output_path: Path for output processed file
+        steps: Preprocessing steps to apply
+        parameters: Parameters for preprocessing steps
+        graph_method: Graph construction method
+        graph_parameters: Parameters for graph construction
+        save_intermediate: Whether to save intermediate results
+        
+    Returns:
+        Processing metadata and statistics
+    """
+    import time
+    start_time = time.time()
+    
+    logger.info(f"Starting preprocessing for dataset: {dataset_name}")
+    
+    try:
+        # Load data
+        adata = sc.read_h5ad(input_path)
+        logger.info(f"Loaded dataset: {adata.n_obs} cells, {adata.n_vars} genes")
+        
+        # Initialize preprocessing pipeline
+        pipeline = PreprocessingPipeline(steps=steps, parameters=parameters or {})
+        
+        # Run preprocessing
+        adata, preprocessing_metadata = pipeline.process(adata, return_metadata=True)
+        
+        # Construct graph
+        graph_constructor = GraphConstructor(method=graph_method, **(graph_parameters or {}))
+        edge_index, edge_weights = graph_constructor.build_graph(adata)
+        
+        # Create PyTorch Geometric Data object
+        from torch_geometric.data import Data
+        
+        # Get features
+        if 'X_pca' in adata.obsm:
+            x = torch.FloatTensor(adata.obsm['X_pca'])
+        else:
+            x = torch.FloatTensor(adata.X.toarray() if issparse(adata.X) else adata.X)
+        
+        # Get labels (if available)
+        y = None
+        if 'cell_type' in adata.obs.columns:
+            from sklearn.preprocessing import LabelEncoder
+            le = LabelEncoder()
+            y = torch.LongTensor(le.fit_transform(adata.obs['cell_type']))
+        
+        # Create Data object
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_weights, y=y)
+        
+        # Save processed data
+        torch.save(data, output_path)
+        
+        # Save AnnData if requested
+        if save_intermediate:
+            adata_path = output_path.replace('.pt', '_adata.h5ad')
+            adata.write(adata_path)
+        
+        # Collect final metadata
+        processing_time = time.time() - start_time
+        
+        final_metadata = {
+            'dataset_name': dataset_name,
+            'processing_time_seconds': processing_time,
+            'preprocessing_steps': preprocessing_metadata['steps_applied'],
+            'preprocessing_parameters': preprocessing_metadata['parameters_used'],
+            'graph_method': graph_method,
+            'graph_parameters': graph_parameters or {},
+            'final_statistics': {
+                'n_cells': adata.n_obs,
+                'n_genes': adata.n_vars,
+                'n_edges': edge_index.shape[1],
+                'graph_density': edge_index.shape[1] / (adata.n_obs * (adata.n_obs - 1)),
+                'feature_dim': x.shape[1] if x is not None else 0,
+                'has_labels': y is not None,
+                'n_classes': len(torch.unique(y)) if y is not None else 0
+            },
+            'file_paths': {
+                'input': input_path,
+                'output': output_path,
+                'adata': adata_path if save_intermediate else None
+            }
+        }
+        
+        # Log to database if available
+        try:
+            repo = get_dataset_repository()
+            repo.log_processing_operation(
+                dataset_name=dataset_name,
+                operation='preprocess',
+                status='completed',
+                duration_seconds=processing_time,
+                parameters={
+                    'preprocessing_steps': steps,
+                    'preprocessing_parameters': parameters,
+                    'graph_method': graph_method,
+                    'graph_parameters': graph_parameters
+                },
+                results=final_metadata['final_statistics']
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log to database: {e}")
+        
+        logger.info(f"Preprocessing completed successfully in {processing_time:.2f}s")
+        
+        return final_metadata
+        
+    except Exception as e:
+        logger.error(f"Preprocessing failed: {e}")
+        
+        # Log failure to database
+        try:
+            repo = get_dataset_repository()
+            repo.log_processing_operation(
+                dataset_name=dataset_name,
+                operation='preprocess',
+                status='failed',
+                error_message=str(e)
+            )
+        except Exception:
+            pass
+        
+        raise

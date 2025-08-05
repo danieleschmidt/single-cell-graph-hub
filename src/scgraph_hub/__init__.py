@@ -7,12 +7,19 @@ try:
     from .dataset import SCGraphDataset
     from .models import BaseGNN, CellGraphGNN, CellGraphSAGE, SpatialGAT, create_model, MODEL_REGISTRY
     from .preprocessing import PreprocessingPipeline, GraphConstructor
-    from .data_manager import DataManager, get_data_manager, load_dataset, create_dataloader
-    from .database import get_dataset_repository, get_cache_manager
     _CORE_AVAILABLE = True
+    _IMPORT_ERROR = None
 except ImportError as e:
     _CORE_AVAILABLE = False
     _IMPORT_ERROR = str(e)
+
+# Try to import optional database functionality
+try:
+    from .data_manager import DataManager, get_data_manager, load_dataset, create_dataloader
+    from .database import get_dataset_repository, get_cache_manager
+    _DATABASE_AVAILABLE = True
+except ImportError:
+    _DATABASE_AVAILABLE = False
 
 # Catalog doesn't require heavy dependencies
 from .catalog import DatasetCatalog, get_default_catalog
@@ -34,10 +41,27 @@ if _CORE_AVAILABLE:
         "SCGraphDataset",
         "BaseGNN", "CellGraphGNN", "CellGraphSAGE", "SpatialGAT", 
         "create_model", "MODEL_REGISTRY",
-        "PreprocessingPipeline", "GraphConstructor",
-        "DataManager", "get_data_manager", "load_dataset", "create_dataloader",
-        "get_dataset_repository", "get_cache_manager"
+        "PreprocessingPipeline", "GraphConstructor"
     ])
+    
+    # Add database functionality if available
+    if _DATABASE_AVAILABLE:
+        __all__.extend([
+            "DataManager", "get_data_manager", "load_dataset", "create_dataloader",
+            "get_dataset_repository", "get_cache_manager"
+        ])
+    else:
+        # Create placeholders for database functionality
+        def _database_missing_error(*args, **kwargs):
+            raise ImportError("Database functionality requires additional dependencies: pip install redis aioredis")
+        
+        DataManager = _database_missing_error
+        get_data_manager = _database_missing_error
+        load_dataset = _database_missing_error
+        create_dataloader = _database_missing_error
+        get_dataset_repository = _database_missing_error
+        get_cache_manager = _database_missing_error
+
 else:
     # Create placeholder functions for missing dependencies
     def _missing_dependency_error(*args, **kwargs):

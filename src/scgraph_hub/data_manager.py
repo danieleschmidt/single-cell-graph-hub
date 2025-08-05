@@ -83,4 +83,520 @@ class DataManager:
     def get_dataset_path(self, dataset_name: str, file_type: str = 'processed') -> Path:
         """Get path for a dataset file.
         
-        Args:\n            dataset_name: Name of the dataset\n            file_type: Type of file ('raw', 'processed', 'cache')\n            \n        Returns:\n            Path to the dataset file\n        \"\"\"\n        if file_type == 'raw':\n            return self.data_root / 'raw' / f\"{dataset_name}.h5ad\"\n        elif file_type == 'processed':\n            return self.data_root / 'processed' / f\"{dataset_name}.pt\"\n        elif file_type == 'cache':\n            return self.cache_dir / f\"{dataset_name}.pt\"\n        else:\n            raise ValueError(f\"Unknown file type: {file_type}\")\n    \n    def is_dataset_available(self, dataset_name: str, file_type: str = 'processed') -> bool:\n        \"\"\"Check if dataset is available locally.\n        \n        Args:\n            dataset_name: Name of the dataset\n            file_type: Type of file to check\n            \n        Returns:\n            True if dataset is available\n        \"\"\"\n        return self.get_dataset_path(dataset_name, file_type).exists()\n    \n    async def download_dataset_async(self, \n                                   dataset_name: str, \n                                   force_redownload: bool = False,\n                                   verify_checksum: bool = True,\n                                   progress_callback: Optional[callable] = None) -> bool:\n        \"\"\"Download dataset asynchronously.\n        \n        Args:\n            dataset_name: Name of the dataset to download\n            force_redownload: Whether to force redownload if file exists\n            verify_checksum: Whether to verify file checksum\n            progress_callback: Callback for download progress\n            \n        Returns:\n            True if download was successful\n        \"\"\"\n        if not self.enable_async or not self._session:\n            # Fallback to sync download\n            return await asyncio.get_event_loop().run_in_executor(\n                self.thread_pool,\n                self._download_dataset_sync,\n                dataset_name, force_redownload, verify_checksum\n            )\n        \n        try:\n            # Get dataset info\n            dataset_info = self.catalog.get_info(dataset_name)\n            download_url = dataset_info.get('url')\n            \n            if not download_url:\n                logger.error(f\"No download URL found for dataset {dataset_name}\")\n                return False\n            \n            # Check if file already exists\n            raw_path = self.get_dataset_path(dataset_name, 'raw')\n            if raw_path.exists() and not force_redownload:\n                logger.info(f\"Dataset {dataset_name} already exists\")\n                return True\n            \n            # Create directory\n            raw_path.parent.mkdir(parents=True, exist_ok=True)\n            \n            # Download file\n            logger.info(f\"Downloading {dataset_name} from {download_url}\")\n            \n            async with self._session.get(download_url) as response:\n                response.raise_for_status()\n                \n                total_size = int(response.headers.get('content-length', 0))\n                downloaded = 0\n                \n                async with aiofiles.open(raw_path, 'wb') as f:\n                    async for chunk in response.content.iter_chunked(8192):\n                        await f.write(chunk)\n                        downloaded += len(chunk)\n                        \n                        if progress_callback and total_size > 0:\n                            progress = downloaded / total_size\n                            progress_callback(dataset_name, progress)\n            \n            # Verify checksum\n            if verify_checksum and 'checksum' in dataset_info:\n                actual_checksum = await asyncio.get_event_loop().run_in_executor(\n                    self.thread_pool, compute_file_checksum, str(raw_path)\n                )\n                \n                expected_checksum = dataset_info['checksum']\n                if actual_checksum != expected_checksum:\n                    logger.error(f\"Checksum verification failed for {dataset_name}\")\n                    raw_path.unlink()  # Remove corrupted file\n                    return False\n            \n            # Update database\n            await asyncio.get_event_loop().run_in_executor(\n                self.thread_pool,\n                self.repository.log_processing_operation,\n                dataset_name, 'download', 'completed'\n            )\n            \n            logger.info(f\"Successfully downloaded {dataset_name}\")\n            return True\n            \n        except Exception as e:\n            logger.error(f\"Failed to download {dataset_name}: {e}\")\n            \n            # Log failure\n            await asyncio.get_event_loop().run_in_executor(\n                self.thread_pool,\n                self.repository.log_processing_operation,\n                dataset_name, 'download', 'failed', error_message=str(e)\n            )\n            \n            return False\n    \n    def _download_dataset_sync(self, \n                              dataset_name: str, \n                              force_redownload: bool = False,\n                              verify_checksum: bool = True) -> bool:\n        \"\"\"Synchronous dataset download.\"\"\"\n        return self.catalog.download_dataset(\n            dataset_name, \n            str(self.get_dataset_path(dataset_name, 'raw').parent),\n            verify_checksum=verify_checksum\n        )\n    \n    async def preprocess_dataset_async(self,\n                                     dataset_name: str,\n                                     preprocessing_config: Optional[Dict[str, Any]] = None,\n                                     force_reprocess: bool = False) -> bool:\n        \"\"\"Preprocess dataset asynchronously.\n        \n        Args:\n            dataset_name: Name of the dataset\n            preprocessing_config: Preprocessing configuration\n            force_reprocess: Whether to force reprocessing\n            \n        Returns:\n            True if preprocessing was successful\n        \"\"\"\n        processed_path = self.get_dataset_path(dataset_name, 'processed')\n        \n        # Check if already processed\n        if processed_path.exists() and not force_reprocess:\n            logger.info(f\"Dataset {dataset_name} already processed\")\n            return True\n        \n        # Ensure raw data is available\n        raw_path = self.get_dataset_path(dataset_name, 'raw')\n        if not raw_path.exists():\n            logger.info(f\"Raw data not found, downloading {dataset_name}\")\n            success = await self.download_dataset_async(dataset_name)\n            if not success:\n                return False\n        \n        # Run preprocessing in process pool\n        try:\n            config = preprocessing_config or {}\n            \n            metadata = await asyncio.get_event_loop().run_in_executor(\n                self.process_pool,\n                preprocess_dataset,\n                dataset_name,\n                str(raw_path),\n                str(processed_path),\n                config.get('steps'),\n                config.get('parameters'),\n                config.get('graph_method', 'knn'),\n                config.get('graph_parameters'),\n                config.get('save_intermediate', False)\n            )\n            \n            logger.info(f\"Successfully preprocessed {dataset_name}\")\n            return True\n            \n        except Exception as e:\n            logger.error(f\"Failed to preprocess {dataset_name}: {e}\")\n            return False\n    \n    def load_dataset(self, \n                    dataset_name: str, \n                    device: str = 'cpu',\n                    use_cache: bool = True) -> Optional[Data]:\n        \"\"\"Load processed dataset.\n        \n        Args:\n            dataset_name: Name of the dataset\n            device: Device to load data on\n            use_cache: Whether to use cache\n            \n        Returns:\n            PyTorch Geometric Data object\n        \"\"\"\n        # Check cache first\n        if use_cache:\n            cache_key = f\"dataset_data:{dataset_name}:{device}\"\n            cached_data = self.cache.get(cache_key)\n            if cached_data:\n                logger.debug(f\"Loading {dataset_name} from cache\")\n                return cached_data\n        \n        # Load from file\n        processed_path = self.get_dataset_path(dataset_name, 'processed')\n        \n        if not processed_path.exists():\n            logger.error(f\"Processed dataset {dataset_name} not found\")\n            return None\n        \n        try:\n            data = torch.load(processed_path, map_location=device)\n            \n            # Cache the data\n            if use_cache:\n                cache_key = f\"dataset_data:{dataset_name}:{device}\"\n                self.cache.set(cache_key, data, ttl=3600)  # 1 hour\n            \n            # Update access tracking\n            self.repository.update_dataset(\n                dataset_name, \n                {'last_accessed': datetime.utcnow()}\n            )\n            \n            return data\n            \n        except Exception as e:\n            logger.error(f\"Failed to load dataset {dataset_name}: {e}\")\n            return None\n    \n    def create_dataloader(self,\n                         dataset_names: Union[str, List[str]],\n                         batch_size: int = 32,\n                         shuffle: bool = True,\n                         num_workers: int = 0,\n                         split: Optional[str] = None,\n                         device: str = 'cpu') -> Optional[DataLoader]:\n        \"\"\"Create PyTorch Geometric DataLoader.\n        \n        Args:\n            dataset_names: Name(s) of datasets to load\n            batch_size: Batch size\n            shuffle: Whether to shuffle data\n            num_workers: Number of data loading workers\n            split: Data split to use ('train', 'val', 'test')\n            device: Device to load data on\n            \n        Returns:\n            DataLoader instance\n        \"\"\"\n        if isinstance(dataset_names, str):\n            dataset_names = [dataset_names]\n        \n        # Load datasets\n        datasets = []\n        for name in dataset_names:\n            data = self.load_dataset(name, device=device)\n            if data is not None:\n                # Handle splits if specified\n                if split and hasattr(data, f'{split}_mask'):\n                    mask = getattr(data, f'{split}_mask')\n                    # Create subset based on mask\n                    # This is simplified - would need proper implementation\n                    datasets.append(data)\n                else:\n                    datasets.append(data)\n            else:\n                logger.warning(f\"Failed to load dataset {name}\")\n        \n        if not datasets:\n            logger.error(\"No datasets loaded successfully\")\n            return None\n        \n        try:\n            return DataLoader(\n                datasets,\n                batch_size=batch_size,\n                shuffle=shuffle,\n                num_workers=num_workers\n            )\n        except Exception as e:\n            logger.error(f\"Failed to create DataLoader: {e}\")\n            return None\n    \n    def get_dataset_statistics(self, dataset_name: str) -> Optional[Dict[str, Any]]:\n        \"\"\"Get comprehensive statistics for a dataset.\n        \n        Args:\n            dataset_name: Name of the dataset\n            \n        Returns:\n            Dictionary containing dataset statistics\n        \"\"\"\n        # Check cache first\n        cache_key = f\"dataset_stats:{dataset_name}\"\n        cached_stats = self.cache.get(cache_key)\n        if cached_stats:\n            return cached_stats\n        \n        # Load dataset\n        data = self.load_dataset(dataset_name, use_cache=False)\n        if data is None:\n            return None\n        \n        try:\n            stats = {\n                'basic': {\n                    'num_nodes': data.num_nodes,\n                    'num_edges': data.num_edges,\n                    'num_features': data.num_features if hasattr(data, 'num_features') else data.x.shape[1],\n                    'has_labels': hasattr(data, 'y') and data.y is not None,\n                    'num_classes': len(torch.unique(data.y)) if hasattr(data, 'y') and data.y is not None else 0\n                },\n                'graph': {\n                    'density': data.num_edges / (data.num_nodes * (data.num_nodes - 1)) if data.num_nodes > 1 else 0,\n                    'average_degree': data.num_edges / data.num_nodes if data.num_nodes > 0 else 0,\n                    'is_undirected': self._is_undirected(data.edge_index)\n                },\n                'features': {\n                    'feature_mean': float(torch.mean(data.x)) if hasattr(data, 'x') else None,\n                    'feature_std': float(torch.std(data.x)) if hasattr(data, 'x') else None,\n                    'sparsity': float(torch.mean((data.x == 0).float())) if hasattr(data, 'x') else None\n                }\n            }\n            \n            # Add split information if available\n            if hasattr(data, 'train_mask'):\n                stats['splits'] = {\n                    'train_nodes': int(torch.sum(data.train_mask)),\n                    'val_nodes': int(torch.sum(data.val_mask)) if hasattr(data, 'val_mask') else 0,\n                    'test_nodes': int(torch.sum(data.test_mask)) if hasattr(data, 'test_mask') else 0\n                }\n            \n            # Cache statistics\n            self.cache.set(cache_key, stats, ttl=7200)  # 2 hours\n            \n            return stats\n            \n        except Exception as e:\n            logger.error(f\"Failed to compute statistics for {dataset_name}: {e}\")\n            return None\n    \n    def _is_undirected(self, edge_index: torch.Tensor) -> bool:\n        \"\"\"Check if graph is undirected.\"\"\"\n        from torch_geometric.utils import is_undirected\n        return is_undirected(edge_index)\n    \n    def cleanup_cache(self, max_age_hours: int = 24):\n        \"\"\"Clean up old cached files.\n        \n        Args:\n            max_age_hours: Maximum age of cache files in hours\n        \"\"\"\n        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)\n        \n        for cache_file in self.cache_dir.glob('*.pt'):\n            if cache_file.stat().st_mtime < cutoff_time.timestamp():\n                try:\n                    cache_file.unlink()\n                    logger.debug(f\"Removed old cache file: {cache_file}\")\n                except Exception as e:\n                    logger.warning(f\"Failed to remove cache file {cache_file}: {e}\")\n    \n    def get_storage_info(self) -> Dict[str, Any]:\n        \"\"\"Get storage usage information.\n        \n        Returns:\n            Dictionary with storage information\n        \"\"\"\n        def get_dir_size(path: Path) -> int:\n            \"\"\"Get total size of directory in bytes.\"\"\"\n            total = 0\n            for file in path.rglob('*'):\n                if file.is_file():\n                    total += file.stat().st_size\n            return total\n        \n        try:\n            raw_size = get_dir_size(self.data_root / 'raw') if (self.data_root / 'raw').exists() else 0\n            processed_size = get_dir_size(self.data_root / 'processed') if (self.data_root / 'processed').exists() else 0\n            cache_size = get_dir_size(self.cache_dir) if self.cache_dir.exists() else 0\n            \n            return {\n                'data_root': str(self.data_root),\n                'cache_dir': str(self.cache_dir),\n                'raw_data_size_mb': raw_size / (1024 * 1024),\n                'processed_data_size_mb': processed_size / (1024 * 1024),\n                'cache_size_mb': cache_size / (1024 * 1024),\n                'total_size_mb': (raw_size + processed_size + cache_size) / (1024 * 1024)\n            }\n        except Exception as e:\n            logger.error(f\"Failed to get storage info: {e}\")\n            return {}\n    \n    async def batch_download_datasets(self,\n                                    dataset_names: List[str],\n                                    max_concurrent: int = 3,\n                                    progress_callback: Optional[callable] = None) -> Dict[str, bool]:\n        \"\"\"Download multiple datasets concurrently.\n        \n        Args:\n            dataset_names: List of dataset names to download\n            max_concurrent: Maximum concurrent downloads\n            progress_callback: Callback for progress updates\n            \n        Returns:\n            Dictionary mapping dataset names to success status\n        \"\"\"\n        semaphore = asyncio.Semaphore(max_concurrent)\n        \n        async def download_with_semaphore(name: str) -> Tuple[str, bool]:\n            async with semaphore:\n                success = await self.download_dataset_async(\n                    name, progress_callback=progress_callback\n                )\n                return name, success\n        \n        # Create tasks for all downloads\n        tasks = [download_with_semaphore(name) for name in dataset_names]\n        \n        # Wait for all downloads to complete\n        results = await asyncio.gather(*tasks, return_exceptions=True)\n        \n        # Process results\n        download_results = {}\n        for result in results:\n            if isinstance(result, Exception):\n                logger.error(f\"Download task failed: {result}\")\n                continue\n            \n            name, success = result\n            download_results[name] = success\n        \n        return download_results\n    \n    async def batch_preprocess_datasets(self,\n                                      dataset_names: List[str],\n                                      preprocessing_configs: Optional[Dict[str, Dict[str, Any]]] = None,\n                                      max_concurrent: int = 2) -> Dict[str, bool]:\n        \"\"\"Preprocess multiple datasets concurrently.\n        \n        Args:\n            dataset_names: List of dataset names to preprocess\n            preprocessing_configs: Preprocessing configurations per dataset\n            max_concurrent: Maximum concurrent preprocessing jobs\n            \n        Returns:\n            Dictionary mapping dataset names to success status\n        \"\"\"\n        semaphore = asyncio.Semaphore(max_concurrent)\n        configs = preprocessing_configs or {}\n        \n        async def preprocess_with_semaphore(name: str) -> Tuple[str, bool]:\n            async with semaphore:\n                config = configs.get(name, {})\n                success = await self.preprocess_dataset_async(name, config)\n                return name, success\n        \n        # Create tasks for all preprocessing\n        tasks = [preprocess_with_semaphore(name) for name in dataset_names]\n        \n        # Wait for all preprocessing to complete\n        results = await asyncio.gather(*tasks, return_exceptions=True)\n        \n        # Process results\n        preprocess_results = {}\n        for result in results:\n            if isinstance(result, Exception):\n                logger.error(f\"Preprocessing task failed: {result}\")\n                continue\n            \n            name, success = result\n            preprocess_results[name] = success\n        \n        return preprocess_results\n\n\n# Global data manager instance\n_data_manager = None\n\n\ndef get_data_manager(**kwargs) -> DataManager:\n    \"\"\"Get the global data manager instance.\"\"\"\n    global _data_manager\n    if _data_manager is None:\n        _data_manager = DataManager(**kwargs)\n    return _data_manager\n\n\n# Convenience functions\nasync def download_dataset(dataset_name: str, **kwargs) -> bool:\n    \"\"\"Convenience function to download a dataset.\"\"\"\n    async with get_data_manager() as dm:\n        return await dm.download_dataset_async(dataset_name, **kwargs)\n\n\nasync def preprocess_dataset_async(dataset_name: str, **kwargs) -> bool:\n    \"\"\"Convenience function to preprocess a dataset.\"\"\"\n    async with get_data_manager() as dm:\n        return await dm.preprocess_dataset_async(dataset_name, **kwargs)\n\n\ndef load_dataset(dataset_name: str, **kwargs) -> Optional[Data]:\n    \"\"\"Convenience function to load a dataset.\"\"\"\n    dm = get_data_manager()\n    return dm.load_dataset(dataset_name, **kwargs)\n\n\ndef create_dataloader(dataset_names: Union[str, List[str]], **kwargs) -> Optional[DataLoader]:\n    \"\"\"Convenience function to create a DataLoader.\"\"\"\n    dm = get_data_manager()\n    return dm.create_dataloader(dataset_names, **kwargs)
+        Args:
+            dataset_name: Name of the dataset
+            file_type: Type of file ('raw', 'processed', 'cache')
+            
+        Returns:
+            Path to the dataset file
+        """
+        if file_type == 'raw':
+            return self.data_root / 'raw' / f"{dataset_name}.h5ad"
+        elif file_type == 'processed':
+            return self.data_root / 'processed' / f"{dataset_name}.pt"
+        elif file_type == 'cache':
+            return self.cache_dir / f"{dataset_name}.pt"
+        else:
+            raise ValueError(f"Unknown file type: {file_type}")
+    
+    def is_dataset_available(self, dataset_name: str, file_type: str = 'processed') -> bool:
+        """Check if dataset is available locally.
+        
+        Args:
+            dataset_name: Name of the dataset
+            file_type: Type of file to check
+            
+        Returns:
+            True if dataset is available
+        """
+        return self.get_dataset_path(dataset_name, file_type).exists()
+    
+    async def download_dataset_async(self, 
+                                   dataset_name: str, 
+                                   force_redownload: bool = False,
+                                   verify_checksum: bool = True,
+                                   progress_callback: Optional[callable] = None) -> bool:
+        """Download dataset asynchronously.
+        
+        Args:
+            dataset_name: Name of the dataset to download
+            force_redownload: Whether to force redownload if file exists
+            verify_checksum: Whether to verify file checksum
+            progress_callback: Callback for download progress
+            
+        Returns:
+            True if download was successful
+        """
+        if not self.enable_async or not self._session:
+            # Fallback to sync download
+            return await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool,
+                self._download_dataset_sync,
+                dataset_name, force_redownload, verify_checksum
+            )
+        
+        try:
+            # Get dataset info
+            dataset_info = self.catalog.get_info(dataset_name)
+            download_url = dataset_info.get('url')
+            
+            if not download_url:
+                logger.error(f"No download URL found for dataset {dataset_name}")
+                return False
+            
+            # Check if file already exists
+            raw_path = self.get_dataset_path(dataset_name, 'raw')
+            if raw_path.exists() and not force_redownload:
+                logger.info(f"Dataset {dataset_name} already exists")
+                return True
+            
+            # Create directory
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Download file
+            logger.info(f"Downloading {dataset_name} from {download_url}")
+            
+            async with self._session.get(download_url) as response:
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                
+                async with aiofiles.open(raw_path, 'wb') as f:
+                    async for chunk in response.content.iter_chunked(8192):
+                        await f.write(chunk)
+                        downloaded += len(chunk)
+                        
+                        if progress_callback and total_size > 0:
+                            progress = downloaded / total_size
+                            progress_callback(dataset_name, progress)
+            
+            # Verify checksum
+            if verify_checksum and 'checksum' in dataset_info:
+                actual_checksum = await asyncio.get_event_loop().run_in_executor(
+                    self.thread_pool, compute_file_checksum, str(raw_path)
+                )
+                
+                expected_checksum = dataset_info['checksum']
+                if actual_checksum != expected_checksum:
+                    logger.error(f"Checksum verification failed for {dataset_name}")
+                    raw_path.unlink()  # Remove corrupted file
+                    return False
+            
+            # Update database
+            await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool,
+                self.repository.log_processing_operation,
+                dataset_name, 'download', 'completed'
+            )
+            
+            logger.info(f"Successfully downloaded {dataset_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to download {dataset_name}: {e}")
+            
+            # Log failure
+            await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool,
+                self.repository.log_processing_operation,
+                dataset_name, 'download', 'failed', error_message=str(e)
+            )
+            
+            return False
+    
+    def _download_dataset_sync(self, 
+                              dataset_name: str, 
+                              force_redownload: bool = False,
+                              verify_checksum: bool = True) -> bool:
+        """Synchronous dataset download."""
+        return self.catalog.download_dataset(
+            dataset_name, 
+            str(self.get_dataset_path(dataset_name, 'raw').parent),
+            verify_checksum=verify_checksum
+        )
+    
+    async def preprocess_dataset_async(self,
+                                     dataset_name: str,
+                                     preprocessing_config: Optional[Dict[str, Any]] = None,
+                                     force_reprocess: bool = False) -> bool:
+        """Preprocess dataset asynchronously.
+        
+        Args:
+            dataset_name: Name of the dataset
+            preprocessing_config: Preprocessing configuration
+            force_reprocess: Whether to force reprocessing
+            
+        Returns:
+            True if preprocessing was successful
+        """
+        processed_path = self.get_dataset_path(dataset_name, 'processed')
+        
+        # Check if already processed
+        if processed_path.exists() and not force_reprocess:
+            logger.info(f"Dataset {dataset_name} already processed")
+            return True
+        
+        # Ensure raw data is available
+        raw_path = self.get_dataset_path(dataset_name, 'raw')
+        if not raw_path.exists():
+            logger.info(f"Raw data not found, downloading {dataset_name}")
+            success = await self.download_dataset_async(dataset_name)
+            if not success:
+                return False
+        
+        # Run preprocessing in process pool
+        try:
+            config = preprocessing_config or {}
+            
+            metadata = await asyncio.get_event_loop().run_in_executor(
+                self.process_pool,
+                preprocess_dataset,
+                dataset_name,
+                str(raw_path),
+                str(processed_path),
+                config.get('steps'),
+                config.get('parameters'),
+                config.get('graph_method', 'knn'),
+                config.get('graph_parameters'),
+                config.get('save_intermediate', False)
+            )
+            
+            logger.info(f"Successfully preprocessed {dataset_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to preprocess {dataset_name}: {e}")
+            return False
+    
+    def load_dataset(self, 
+                    dataset_name: str, 
+                    device: str = 'cpu',
+                    use_cache: bool = True) -> Optional[Data]:
+        """Load processed dataset.
+        
+        Args:
+            dataset_name: Name of the dataset
+            device: Device to load data on
+            use_cache: Whether to use cache
+            
+        Returns:
+            PyTorch Geometric Data object
+        """
+        # Check cache first
+        if use_cache:
+            cache_key = f"dataset_data:{dataset_name}:{device}"
+            cached_data = self.cache.get(cache_key)
+            if cached_data:
+                logger.debug(f"Loading {dataset_name} from cache")
+                return cached_data
+        
+        # Load from file
+        processed_path = self.get_dataset_path(dataset_name, 'processed')
+        
+        if not processed_path.exists():
+            logger.error(f"Processed dataset {dataset_name} not found")
+            return None
+        
+        try:
+            data = torch.load(processed_path, map_location=device)
+            
+            # Cache the data
+            if use_cache:
+                cache_key = f"dataset_data:{dataset_name}:{device}"
+                self.cache.set(cache_key, data, ttl=3600)  # 1 hour
+            
+            # Update access tracking
+            self.repository.update_dataset(
+                dataset_name, 
+                {'last_accessed': datetime.utcnow()}
+            )
+            
+            return data
+            
+        except Exception as e:
+            logger.error(f"Failed to load dataset {dataset_name}: {e}")
+            return None
+    
+    def create_dataloader(self,
+                         dataset_names: Union[str, List[str]],
+                         batch_size: int = 32,
+                         shuffle: bool = True,
+                         num_workers: int = 0,
+                         split: Optional[str] = None,
+                         device: str = 'cpu') -> Optional[DataLoader]:
+        """Create PyTorch Geometric DataLoader.
+        
+        Args:
+            dataset_names: Name(s) of datasets to load
+            batch_size: Batch size
+            shuffle: Whether to shuffle data
+            num_workers: Number of data loading workers
+            split: Data split to use ('train', 'val', 'test')
+            device: Device to load data on
+            
+        Returns:
+            DataLoader instance
+        """
+        if isinstance(dataset_names, str):
+            dataset_names = [dataset_names]
+        
+        # Load datasets
+        datasets = []
+        for name in dataset_names:
+            data = self.load_dataset(name, device=device)
+            if data is not None:
+                # Handle splits if specified
+                if split and hasattr(data, f'{split}_mask'):
+                    mask = getattr(data, f'{split}_mask')
+                    # Create subset based on mask
+                    # This is simplified - would need proper implementation
+                    datasets.append(data)
+                else:
+                    datasets.append(data)
+            else:
+                logger.warning(f"Failed to load dataset {name}")
+        
+        if not datasets:
+            logger.error("No datasets loaded successfully")
+            return None
+        
+        try:
+            return DataLoader(
+                datasets,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers
+            )
+        except Exception as e:
+            logger.error(f"Failed to create DataLoader: {e}")
+            return None
+    
+    def get_dataset_statistics(self, dataset_name: str) -> Optional[Dict[str, Any]]:
+        """Get comprehensive statistics for a dataset.
+        
+        Args:
+            dataset_name: Name of the dataset
+            
+        Returns:
+            Dictionary containing dataset statistics
+        """
+        # Check cache first
+        cache_key = f"dataset_stats:{dataset_name}"
+        cached_stats = self.cache.get(cache_key)
+        if cached_stats:
+            return cached_stats
+        
+        # Load dataset
+        data = self.load_dataset(dataset_name, use_cache=False)
+        if data is None:
+            return None
+        
+        try:
+            stats = {
+                'basic': {
+                    'num_nodes': data.num_nodes,
+                    'num_edges': data.num_edges,
+                    'num_features': data.num_features if hasattr(data, 'num_features') else data.x.shape[1],
+                    'has_labels': hasattr(data, 'y') and data.y is not None,
+                    'num_classes': len(torch.unique(data.y)) if hasattr(data, 'y') and data.y is not None else 0
+                },
+                'graph': {
+                    'density': data.num_edges / (data.num_nodes * (data.num_nodes - 1)) if data.num_nodes > 1 else 0,
+                    'average_degree': data.num_edges / data.num_nodes if data.num_nodes > 0 else 0,
+                    'is_undirected': self._is_undirected(data.edge_index)
+                },
+                'features': {
+                    'feature_mean': float(torch.mean(data.x)) if hasattr(data, 'x') else None,
+                    'feature_std': float(torch.std(data.x)) if hasattr(data, 'x') else None,
+                    'sparsity': float(torch.mean((data.x == 0).float())) if hasattr(data, 'x') else None
+                }
+            }
+            
+            # Add split information if available
+            if hasattr(data, 'train_mask'):
+                stats['splits'] = {
+                    'train_nodes': int(torch.sum(data.train_mask)),
+                    'val_nodes': int(torch.sum(data.val_mask)) if hasattr(data, 'val_mask') else 0,
+                    'test_nodes': int(torch.sum(data.test_mask)) if hasattr(data, 'test_mask') else 0
+                }
+            
+            # Cache statistics
+            self.cache.set(cache_key, stats, ttl=7200)  # 2 hours
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Failed to compute statistics for {dataset_name}: {e}")
+            return None
+    
+    def _is_undirected(self, edge_index: torch.Tensor) -> bool:
+        """Check if graph is undirected."""
+        from torch_geometric.utils import is_undirected
+        return is_undirected(edge_index)
+    
+    def cleanup_cache(self, max_age_hours: int = 24):
+        """Clean up old cached files.
+        
+        Args:
+            max_age_hours: Maximum age of cache files in hours
+        """
+        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        
+        for cache_file in self.cache_dir.glob('*.pt'):
+            if cache_file.stat().st_mtime < cutoff_time.timestamp():
+                try:
+                    cache_file.unlink()
+                    logger.debug(f"Removed old cache file: {cache_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove cache file {cache_file}: {e}")
+    
+    def get_storage_info(self) -> Dict[str, Any]:
+        """Get storage usage information.
+        
+        Returns:
+            Dictionary with storage information
+        """
+        def get_dir_size(path: Path) -> int:
+            """Get total size of directory in bytes."""
+            total = 0
+            for file in path.rglob('*'):
+                if file.is_file():
+                    total += file.stat().st_size
+            return total
+        
+        try:
+            raw_size = get_dir_size(self.data_root / 'raw') if (self.data_root / 'raw').exists() else 0
+            processed_size = get_dir_size(self.data_root / 'processed') if (self.data_root / 'processed').exists() else 0
+            cache_size = get_dir_size(self.cache_dir) if self.cache_dir.exists() else 0
+            
+            return {
+                'data_root': str(self.data_root),
+                'cache_dir': str(self.cache_dir),
+                'raw_data_size_mb': raw_size / (1024 * 1024),
+                'processed_data_size_mb': processed_size / (1024 * 1024),
+                'cache_size_mb': cache_size / (1024 * 1024),
+                'total_size_mb': (raw_size + processed_size + cache_size) / (1024 * 1024)
+            }
+        except Exception as e:
+            logger.error(f"Failed to get storage info: {e}")
+            return {}
+    
+    async def batch_download_datasets(self,
+                                    dataset_names: List[str],
+                                    max_concurrent: int = 3,
+                                    progress_callback: Optional[callable] = None) -> Dict[str, bool]:
+        """Download multiple datasets concurrently.
+        
+        Args:
+            dataset_names: List of dataset names to download
+            max_concurrent: Maximum concurrent downloads
+            progress_callback: Callback for progress updates
+            
+        Returns:
+            Dictionary mapping dataset names to success status
+        """
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        async def download_with_semaphore(name: str) -> Tuple[str, bool]:
+            async with semaphore:
+                success = await self.download_dataset_async(
+                    name, progress_callback=progress_callback
+                )
+                return name, success
+        
+        # Create tasks for all downloads
+        tasks = [download_with_semaphore(name) for name in dataset_names]
+        
+        # Wait for all downloads to complete
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        download_results = {}
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Download task failed: {result}")
+                continue
+            
+            name, success = result
+            download_results[name] = success
+        
+        return download_results
+    
+    async def batch_preprocess_datasets(self,
+                                      dataset_names: List[str],
+                                      preprocessing_configs: Optional[Dict[str, Dict[str, Any]]] = None,
+                                      max_concurrent: int = 2) -> Dict[str, bool]:
+        """Preprocess multiple datasets concurrently.
+        
+        Args:
+            dataset_names: List of dataset names to preprocess
+            preprocessing_configs: Preprocessing configurations per dataset
+            max_concurrent: Maximum concurrent preprocessing jobs
+            
+        Returns:
+            Dictionary mapping dataset names to success status
+        """
+        semaphore = asyncio.Semaphore(max_concurrent)
+        configs = preprocessing_configs or {}
+        
+        async def preprocess_with_semaphore(name: str) -> Tuple[str, bool]:
+            async with semaphore:
+                config = configs.get(name, {})
+                success = await self.preprocess_dataset_async(name, config)
+                return name, success
+        
+        # Create tasks for all preprocessing
+        tasks = [preprocess_with_semaphore(name) for name in dataset_names]
+        
+        # Wait for all preprocessing to complete
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        preprocess_results = {}
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Preprocessing task failed: {result}")
+                continue
+            
+            name, success = result
+            preprocess_results[name] = success
+        
+        return preprocess_results
+
+
+# Global data manager instance
+_data_manager = None
+
+
+def get_data_manager(**kwargs) -> DataManager:
+    """Get the global data manager instance."""
+    global _data_manager
+    if _data_manager is None:
+        _data_manager = DataManager(**kwargs)
+    return _data_manager
+
+
+# Convenience functions
+async def download_dataset(dataset_name: str, **kwargs) -> bool:
+    """Convenience function to download a dataset."""
+    async with get_data_manager() as dm:
+        return await dm.download_dataset_async(dataset_name, **kwargs)
+
+
+async def preprocess_dataset_async(dataset_name: str, **kwargs) -> bool:
+    """Convenience function to preprocess a dataset."""
+    async with get_data_manager() as dm:
+        return await dm.preprocess_dataset_async(dataset_name, **kwargs)
+
+
+def load_dataset(dataset_name: str, **kwargs) -> Optional[Data]:
+    """Convenience function to load a dataset."""
+    dm = get_data_manager()
+    return dm.load_dataset(dataset_name, **kwargs)
+
+
+def create_dataloader(dataset_names: Union[str, List[str]], **kwargs) -> Optional[DataLoader]:
+    """Convenience function to create a DataLoader."""
+    dm = get_data_manager()
+    return dm.create_dataloader(dataset_names, **kwargs)

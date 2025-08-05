@@ -5,11 +5,152 @@ import hashlib
 import secrets
 import tempfile
 import os
+import re
+import json
 from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
 import warnings
 
+import torch
+import numpy as np
+
 logger = logging.getLogger(__name__)
+
+
+class InputSanitizer:
+    """Sanitize and validate inputs to prevent injection attacks and malicious data."""
+    
+    def __init__(self):
+        self.max_string_length = 10000
+        self.max_list_length = 100000
+        self.allowed_string_pattern = re.compile(r'^[a-zA-Z0-9_\-\.\s/]+$')
+        self.sql_injection_patterns = [
+            r'(union|select|insert|update|delete|drop|create|alter|exec|execute)',
+            r'(script|javascript|vbscript|onload|onerror)',
+            r'(\<script|\</script|\<iframe|\</iframe)'
+        ]
+        self.path_traversal_patterns = [
+            r'\.\./+',  # Path traversal attempts
+            r'/etc/',   # System file access
+            r'/root/',  # Root access
+            r'\.\.\\',  # Windows path traversal
+        ]
+    
+    def sanitize_string(self, input_str: str, allow_special_chars: bool = False) -> str:
+        """Sanitize string input.
+        
+        Args:
+            input_str: Input string to sanitize
+            allow_special_chars: Whether to allow special characters
+            
+        Returns:
+            Sanitized string
+        """
+        if not isinstance(input_str, str):
+            raise ValueError(f"Expected string, got {type(input_str)}")
+        
+        if len(input_str) > self.max_string_length:
+            raise ValueError(f"String too long: {len(input_str)} > {self.max_string_length}")
+        
+        # Check for null bytes and control characters
+        if '\x00' in input_str:
+            raise ValueError("Null byte detected in input string")
+        
+        # Check for SQL injection patterns
+        for pattern in self.sql_injection_patterns:
+            if re.search(pattern, input_str, re.IGNORECASE):
+                raise ValueError(f"Potentially malicious SQL pattern detected: {pattern}")
+        
+        # Check for path traversal patterns
+        for pattern in self.path_traversal_patterns:
+            if re.search(pattern, input_str, re.IGNORECASE):
+                raise ValueError(f"Path traversal attempt detected: {pattern}")
+        
+        # Remove control characters
+        sanitized = input_str.replace('\r', '').replace('\n', ' ')
+        
+        # If not allowing special chars, check against pattern
+        if not allow_special_chars and not self.allowed_string_pattern.match(sanitized):
+            # Remove disallowed characters
+            sanitized = re.sub(r'[^a-zA-Z0-9_\-\.\s/]', '', sanitized)
+        
+        return sanitized.strip()
+    
+    def sanitize_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Sanitize tensor data.
+        
+        Args:
+            tensor: Input tensor
+            
+        Returns:
+            Sanitized tensor
+        """
+        if not isinstance(tensor, torch.Tensor):
+            raise ValueError(f"Expected torch.Tensor, got {type(tensor)}")
+        
+        # Check for extreme values
+        if torch.isinf(tensor).any():
+            logger.warning("Infinite values detected in tensor")
+            tensor = torch.where(torch.isinf(tensor), torch.zeros_like(tensor), tensor)
+        
+        if torch.isnan(tensor).any():
+            logger.warning("NaN values detected in tensor")
+            tensor = torch.where(torch.isnan(tensor), torch.zeros_like(tensor), tensor)
+        
+        # Check for extremely large values that could cause memory issues
+        max_val = tensor.abs().max()
+        if max_val > 1e6:
+            logger.warning(f"Very large values detected: max = {max_val}")
+            tensor = torch.clamp(tensor, -1e6, 1e6)
+        
+        return tensor
+    
+    def validate_dataset_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate and sanitize dataset metadata.
+        
+        Args:
+            metadata: Metadata dictionary
+            
+        Returns:
+            Sanitized metadata
+        """
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Expected dict, got {type(metadata)}")
+        
+        sanitized = {}
+        
+        for key, value in metadata.items():
+            # Sanitize key
+            if not isinstance(key, str):
+                continue  # Skip non-string keys
+            
+            clean_key = self.sanitize_string(key)
+            if not clean_key:
+                continue  # Skip empty keys
+            
+            # Sanitize value based on type
+            if isinstance(value, str):
+                sanitized[clean_key] = self.sanitize_string(value, allow_special_chars=True)
+            elif isinstance(value, (int, float)):
+                if np.isfinite(value):
+                    sanitized[clean_key] = value
+            elif isinstance(value, bool):
+                sanitized[clean_key] = value
+            elif isinstance(value, list):
+                if len(value) <= self.max_list_length:
+                    # Recursively sanitize list items
+                    clean_list = []
+                    for item in value:
+                        if isinstance(item, str):
+                            clean_item = self.sanitize_string(item, allow_special_chars=True)
+                            if clean_item:
+                                clean_list.append(clean_item)
+                        elif isinstance(item, (int, float)) and np.isfinite(item):
+                            clean_list.append(item)
+                    sanitized[clean_key] = clean_list
+            # Skip other data types
+        
+        return sanitized
 
 
 class SecurityValidator:

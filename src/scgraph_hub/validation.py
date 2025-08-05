@@ -33,6 +33,26 @@ class DataValidator:
         """
         self.strict_mode = strict_mode
         self.validation_history = []
+        self.validation_rules = self._load_validation_rules()
+    
+    def _load_validation_rules(self) -> Dict[str, Any]:
+        """Load validation rules and thresholds."""
+        return {
+            'min_nodes': 10,
+            'max_nodes': 1000000,
+            'min_edges': 0,
+            'max_edges': 10000000,
+            'min_features': 1,
+            'max_features': 100000,
+            'max_memory_usage_gb': 16,
+            'required_attributes': ['x', 'edge_index'],
+            'optional_attributes': ['y', 'train_mask', 'val_mask', 'test_mask'],
+            'data_types': {
+                'x': torch.float32,
+                'edge_index': torch.long,
+                'y': torch.long
+            }
+        }
     
     def validate_dataset(self, data: Data, dataset_name: str = "unknown") -> Dict[str, Any]:
         """Comprehensive dataset validation.

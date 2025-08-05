@@ -4,6 +4,9 @@ import logging
 import time
 import threading
 import queue
+import psutil
+import os
+import sys
 from typing import Dict, List, Optional, Any, Callable, Union
 from pathlib import Path
 import json
@@ -15,6 +18,158 @@ import torch
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+class HealthChecker:
+    """Comprehensive health checking for system resources and models."""
+    
+    def __init__(self):
+        """Initialize health checker."""
+        self.health_status = {}
+        self.alerts = []
+        self.thresholds = {
+            'memory_usage_percent': 90.0,
+            'disk_usage_percent': 95.0,
+            'gpu_memory_percent': 95.0,
+            'model_inference_time_ms': 10000.0,
+            'dataset_load_time_ms': 30000.0
+        }
+    
+    def check_system_health(self) -> Dict[str, Any]:
+        """Check overall system health."""
+        health_report = {
+            'timestamp': datetime.now().isoformat(),
+            'status': 'healthy',
+            'checks': {}
+        }
+        
+        try:
+            # Memory check
+            memory = psutil.virtual_memory()
+            health_report['checks']['memory'] = {
+                'total_gb': memory.total / (1024**3),
+                'used_gb': memory.used / (1024**3),
+                'percent_used': memory.percent,
+                'status': 'healthy' if memory.percent < self.thresholds['memory_usage_percent'] else 'warning'
+            }
+            
+            # Disk check
+            disk = psutil.disk_usage('/')
+            health_report['checks']['disk'] = {
+                'total_gb': disk.total / (1024**3),
+                'used_gb': disk.used / (1024**3),
+                'percent_used': (disk.used / disk.total) * 100,
+                'status': 'healthy' if (disk.used / disk.total) * 100 < self.thresholds['disk_usage_percent'] else 'warning'
+            }
+            
+            # CPU check
+            cpu_percent = psutil.cpu_percent(interval=1)
+            health_report['checks']['cpu'] = {
+                'percent_used': cpu_percent,
+                'cores': psutil.cpu_count(),
+                'status': 'healthy'
+            }
+            
+            # GPU check (if available)
+            if torch.cuda.is_available():
+                gpu_memory = torch.cuda.get_device_properties(0).total_memory
+                gpu_allocated = torch.cuda.memory_allocated(0)
+                gpu_percent = (gpu_allocated / gpu_memory) * 100
+                
+                health_report['checks']['gpu'] = {
+                    'total_memory_gb': gpu_memory / (1024**3),
+                    'allocated_memory_gb': gpu_allocated / (1024**3),
+                    'percent_used': gpu_percent,
+                    'status': 'healthy' if gpu_percent < self.thresholds['gpu_memory_percent'] else 'warning'
+                }
+            
+            # Python environment check
+            health_report['checks']['python'] = {
+                'version': sys.version,
+                'torch_version': torch.__version__,
+                'cuda_available': torch.cuda.is_available(),
+                'status': 'healthy'
+            }
+            
+            # Determine overall status
+            check_statuses = [check.get('status', 'unknown') for check in health_report['checks'].values()]
+            if 'error' in check_statuses:
+                health_report['status'] = 'error'
+            elif 'warning' in check_statuses:
+                health_report['status'] = 'warning'
+            
+        except Exception as e:
+            health_report['status'] = 'error'
+            health_report['error'] = str(e)
+            logger.error(f"Health check failed: {e}")
+        
+        return health_report
+    
+    def check_model_health(self, model: torch.nn.Module) -> Dict[str, Any]:
+        """Check model health and performance."""
+        health_report = {
+            'timestamp': datetime.now().isoformat(),
+            'status': 'healthy',
+            'checks': {}
+        }
+        
+        try:
+            # Parameter count
+            total_params = sum(p.numel() for p in model.parameters())
+            trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            
+            health_report['checks']['parameters'] = {
+                'total': total_params,
+                'trainable': trainable_params,
+                'memory_estimate_mb': (total_params * 4) / (1024**2),  # Assuming float32
+                'status': 'healthy'
+            }
+            
+            # Gradient check
+            has_nan_gradients = False
+            gradient_norms = []
+            
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_norm = param.grad.norm().item()
+                    gradient_norms.append(grad_norm)
+                    if torch.isnan(param.grad).any():
+                        has_nan_gradients = True
+            
+            health_report['checks']['gradients'] = {
+                'has_nan': has_nan_gradients,
+                'max_norm': max(gradient_norms) if gradient_norms else 0,
+                'mean_norm': np.mean(gradient_norms) if gradient_norms else 0,
+                'status': 'error' if has_nan_gradients else 'healthy'
+            }
+            
+            # Parameter statistics
+            param_stats = []
+            for name, param in model.named_parameters():
+                if torch.isnan(param).any():
+                    health_report['checks']['parameters']['status'] = 'error'
+                
+                param_stats.append({
+                    'name': name,
+                    'shape': list(param.shape),
+                    'mean': param.mean().item(),
+                    'std': param.std().item(),
+                    'has_nan': torch.isnan(param).any().item(),
+                    'has_inf': torch.isinf(param).any().item()
+                })
+            
+            health_report['checks']['parameter_stats'] = param_stats
+            
+            # Determine overall status
+            if has_nan_gradients or health_report['checks']['parameters']['status'] == 'error':
+                health_report['status'] = 'error'
+                
+        except Exception as e:
+            health_report['status'] = 'error'
+            health_report['error'] = str(e)
+            logger.error(f"Model health check failed: {e}")
+        
+        return health_report
 
 
 class PerformanceMonitor:
@@ -304,253 +459,6 @@ class ResourceMonitor:
         self.thresholds[metric] = value
         logger.info(f"Set threshold for {metric}: {value}")
 
-
-class HealthChecker:
-    """Perform health checks on the system and models."""
-    
-    def __init__(self):
-        self.checks = {}
-        self.last_results = {}
-        
-        # Register default health checks
-        self.register_check('dependencies', self._check_dependencies)
-        self.register_check('cuda', self._check_cuda)
-        self.register_check('memory', self._check_memory)
-        self.register_check('disk_space', self._check_disk_space)
-    
-    def register_check(self, name: str, check_func: Callable[[], Dict[str, Any]]):
-        """Register a health check function.
-        
-        Args:
-            name: Name of the check
-            check_func: Function that returns health check results
-        """
-        self.checks[name] = check_func
-        logger.debug(f"Registered health check: {name}")
-    
-    def run_check(self, name: str) -> Dict[str, Any]:
-        """Run a specific health check.
-        
-        Args:
-            name: Name of the check
-            
-        Returns:
-            Health check results
-        """
-        if name not in self.checks:
-            return {
-                'status': 'error',
-                'message': f'Unknown health check: {name}'
-            }
-        
-        try:
-            result = self.checks[name]()
-            result['timestamp'] = datetime.now().isoformat()
-            self.last_results[name] = result
-            return result
-        
-        except Exception as e:
-            result = {
-                'status': 'error',
-                'message': f'Health check failed: {str(e)}',
-                'timestamp': datetime.now().isoformat()
-            }
-            self.last_results[name] = result
-            return result
-    
-    def run_all_checks(self) -> Dict[str, Dict[str, Any]]:
-        """Run all registered health checks.
-        
-        Returns:
-            Dictionary mapping check names to results
-        """
-        results = {}
-        for name in self.checks:
-            results[name] = self.run_check(name)
-        return results
-    
-    def get_overall_health(self) -> Dict[str, Any]:
-        """Get overall system health status.
-        
-        Returns:
-            Overall health summary
-        """
-        results = self.run_all_checks()
-        
-        # Count status types
-        status_counts = defaultdict(int)
-        for result in results.values():
-            status_counts[result.get('status', 'unknown')] += 1
-        
-        # Determine overall status
-        if status_counts['error'] > 0:
-            overall_status = 'unhealthy'
-        elif status_counts['warning'] > 0:
-            overall_status = 'degraded'
-        else:
-            overall_status = 'healthy'
-        
-        return {
-            'overall_status': overall_status,
-            'timestamp': datetime.now().isoformat(),
-            'checks': results,
-            'summary': dict(status_counts)
-        }
-    
-    def _check_dependencies(self) -> Dict[str, Any]:
-        """Check if required dependencies are available."""
-        missing = []
-        available = []
-        
-        dependencies = {
-            'torch': 'PyTorch',
-            'torch_geometric': 'PyTorch Geometric',
-            'numpy': 'NumPy',
-            'pandas': 'Pandas',
-            'sklearn': 'Scikit-learn',
-            'scanpy': 'Scanpy'
-        }
-        
-        for module, name in dependencies.items():
-            try:
-                if module == 'torch_geometric':
-                    import torch_geometric
-                elif module == 'sklearn':
-                    import sklearn
-                else:
-                    __import__(module)
-                available.append(name)
-            except ImportError:
-                missing.append(name)
-        
-        if missing:
-            return {
-                'status': 'warning',
-                'message': f'Missing optional dependencies: {", ".join(missing)}',
-                'available': available,
-                'missing': missing
-            }
-        else:
-            return {
-                'status': 'ok',
-                'message': 'All dependencies available',
-                'available': available
-            }
-    
-    def _check_cuda(self) -> Dict[str, Any]:
-        """Check CUDA availability and status."""
-        if not torch.cuda.is_available():
-            return {
-                'status': 'info',
-                'message': 'CUDA not available, using CPU',
-                'cuda_available': False
-            }
-        
-        try:
-            device_count = torch.cuda.device_count()
-            current_device = torch.cuda.current_device()
-            device_name = torch.cuda.get_device_name(current_device)
-            
-            # Check GPU memory
-            total_memory = torch.cuda.get_device_properties(current_device).total_memory
-            allocated_memory = torch.cuda.memory_allocated(current_device)
-            memory_percent = (allocated_memory / total_memory) * 100
-            
-            status = 'ok'
-            message = f'CUDA available: {device_count} devices'
-            
-            if memory_percent > 90:
-                status = 'warning'
-                message += f', GPU memory usage high ({memory_percent:.1f}%)'
-            
-            return {
-                'status': status,
-                'message': message,
-                'cuda_available': True,
-                'device_count': device_count,
-                'current_device': current_device,
-                'device_name': device_name,
-                'memory_allocated_mb': allocated_memory / (1024**2),
-                'memory_total_mb': total_memory / (1024**2),
-                'memory_percent': memory_percent
-            }
-        
-        except Exception as e:
-            return {
-                'status': 'error',
-                'message': f'CUDA check failed: {str(e)}',
-                'cuda_available': True
-            }
-    
-    def _check_memory(self) -> Dict[str, Any]:
-        """Check system memory usage."""
-        try:
-            import psutil
-            
-            memory = psutil.virtual_memory()
-            memory_percent = memory.percent
-            
-            status = 'ok'
-            message = f'Memory usage: {memory_percent:.1f}%'
-            
-            if memory_percent > 90:
-                status = 'error'
-                message = f'Memory usage critical: {memory_percent:.1f}%'
-            elif memory_percent > 80:
-                status = 'warning'
-                message = f'Memory usage high: {memory_percent:.1f}%'
-            
-            return {
-                'status': status,
-                'message': message,
-                'memory_total_gb': memory.total / (1024**3),
-                'memory_used_gb': memory.used / (1024**3),
-                'memory_percent': memory_percent
-            }
-        
-        except ImportError:
-            return {
-                'status': 'warning',
-                'message': 'psutil not available, cannot check memory'
-            }
-        except Exception as e:
-            return {
-                'status': 'error',
-                'message': f'Memory check failed: {str(e)}'
-            }
-    
-    def _check_disk_space(self) -> Dict[str, Any]:
-        """Check disk space usage."""
-        try:
-            import shutil
-            
-            total, used, free = shutil.disk_usage('/')
-            usage_percent = (used / total) * 100
-            
-            status = 'ok'
-            message = f'Disk usage: {usage_percent:.1f}%'
-            
-            if usage_percent > 95:
-                status = 'error'
-                message = f'Disk space critical: {usage_percent:.1f}%'
-            elif usage_percent > 85:
-                status = 'warning'
-                message = f'Disk space low: {usage_percent:.1f}%'
-            
-            return {
-                'status': status,
-                'message': message,
-                'disk_total_gb': total / (1024**3),
-                'disk_used_gb': used / (1024**3),
-                'disk_free_gb': free / (1024**3),
-                'disk_percent': usage_percent
-            }
-        
-        except Exception as e:
-            return {
-                'status': 'error',
-                'message': f'Disk space check failed: {str(e)}'
-            }
 
 
 class ModelMonitor:
