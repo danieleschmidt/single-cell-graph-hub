@@ -17,6 +17,9 @@ except ImportError as e:
 # Catalog doesn't require heavy dependencies
 from .catalog import DatasetCatalog, get_default_catalog
 
+# Simple dataset for basic functionality
+from .simple_dataset import SimpleSCGraphDataset, SimpleSCGraphData
+
 # Utility functions
 from .utils import check_dependencies, validate_dataset_config
 
@@ -24,6 +27,8 @@ from .utils import check_dependencies, validate_dataset_config
 __all__ = [
     "DatasetCatalog", 
     "get_default_catalog",
+    "SimpleSCGraphDataset",
+    "SimpleSCGraphData",
     "check_dependencies", 
     "validate_dataset_config"
 ]
@@ -101,5 +106,20 @@ def quick_start(dataset_name: str, model_name: str = 'cellgnn', **kwargs):
     return data, model, dataloader
 
 
+# Simple quick start for basic functionality
+def simple_quick_start(dataset_name: str = "pbmc_10k", root: str = "./data", **kwargs):
+    """Simple quick start function for basic functionality without heavy dependencies.
+    
+    Args:
+        dataset_name: Name of the dataset to load
+        root: Root directory for data storage
+        **kwargs: Additional arguments
+        
+    Returns:
+        SimpleSCGraphDataset instance
+    """
+    return SimpleSCGraphDataset(name=dataset_name, root=root, **kwargs)
+
+
 # Add to exports
-__all__.append("quick_start")
+__all__.extend(["quick_start", "simple_quick_start"])

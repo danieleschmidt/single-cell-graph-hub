@@ -4,12 +4,19 @@ from typing import Dict, List, Optional, Any, Union
 import json
 import warnings
 import os
-import requests
 from pathlib import Path
 import hashlib
-from urllib.parse import urljoin
 import tempfile
 import shutil
+
+# Optional imports for full functionality
+try:
+    import requests
+    from urllib.parse import urljoin
+    _REQUESTS_AVAILABLE = True
+except ImportError:
+    _REQUESTS_AVAILABLE = False
+    warnings.warn("requests not available - download functionality disabled")
 
 
 class DatasetCatalog:
@@ -231,12 +238,13 @@ class DatasetCatalog:
     def _load_external_catalog(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """Try to load catalog from external sources."""
         try:
-            # Try to load from environment variable
-            catalog_url = os.environ.get('SCGRAPH_CATALOG_URL')
-            if catalog_url:
-                response = requests.get(catalog_url, timeout=10)
-                response.raise_for_status()
-                return response.json()
+            # Try to load from environment variable (only if requests available)
+            if _REQUESTS_AVAILABLE:
+                catalog_url = os.environ.get('SCGRAPH_CATALOG_URL')
+                if catalog_url:
+                    response = requests.get(catalog_url, timeout=10)
+                    response.raise_for_status()
+                    return response.json()
             
             # Try to load from local file
             local_catalog_paths = [
@@ -457,6 +465,10 @@ class DatasetCatalog:
         Returns:
             True if download was successful, False otherwise
         """
+        if not _REQUESTS_AVAILABLE:
+            warnings.warn("Download functionality requires 'requests' package")
+            return False
+            
         if name not in self._datasets:
             warnings.warn(f"Dataset '{name}' not found in catalog")
             return False
@@ -501,6 +513,9 @@ class DatasetCatalog:
     
     def _download_file(self, url: str, target_path: str, optional: bool = False) -> bool:
         """Download a file from URL to target path."""
+        if not _REQUESTS_AVAILABLE:
+            return False
+            
         try:
             response = requests.get(url, stream=True, timeout=30)
             
@@ -573,31 +588,35 @@ class DatasetCatalog:
         
         try:
             # Try to load the dataset
-            import scanpy as sc
-            adata = sc.read_h5ad(dataset_path)
-            
-            if name in self._datasets:
-                expected_info = self._datasets[name]
+            try:
+                import scanpy as sc
+                adata = sc.read_h5ad(dataset_path)
                 
-                # Check cell count
-                if 'n_cells' in expected_info:
-                    expected_cells = expected_info['n_cells']
-                    actual_cells = adata.shape[0]
-                    if abs(actual_cells - expected_cells) > 0.1 * expected_cells:
-                        validation_results['warnings'].append(
-                            f"Cell count mismatch: expected {expected_cells}, got {actual_cells}"
-                        )
-                        validation_results['metadata_match'] = False
-                
-                # Check gene count
-                if 'n_genes' in expected_info:
-                    expected_genes = expected_info['n_genes']
-                    actual_genes = adata.shape[1]
-                    if abs(actual_genes - expected_genes) > 0.1 * expected_genes:
-                        validation_results['warnings'].append(
-                            f"Gene count mismatch: expected {expected_genes}, got {actual_genes}"
-                        )
-                        validation_results['metadata_match'] = False
+                if name in self._datasets:
+                    expected_info = self._datasets[name]
+                    
+                    # Check cell count
+                    if 'n_cells' in expected_info:
+                        expected_cells = expected_info['n_cells']
+                        actual_cells = adata.shape[0]
+                        if abs(actual_cells - expected_cells) > 0.1 * expected_cells:
+                            validation_results['warnings'].append(
+                                f"Cell count mismatch: expected {expected_cells}, got {actual_cells}"
+                            )
+                            validation_results['metadata_match'] = False
+                    
+                    # Check gene count
+                    if 'n_genes' in expected_info:
+                        expected_genes = expected_info['n_genes']
+                        actual_genes = adata.shape[1]
+                        if abs(actual_genes - expected_genes) > 0.1 * expected_genes:
+                            validation_results['warnings'].append(
+                                f"Gene count mismatch: expected {expected_genes}, got {actual_genes}"
+                            )
+                            validation_results['metadata_match'] = False
+                            
+            except ImportError:
+                validation_results['warnings'].append("scanpy not available - detailed validation skipped")
         
         except Exception as e:
             validation_results['valid'] = False
@@ -708,7 +727,10 @@ class DatasetCatalog:
         if base_url is None:
             base_url = "https://scgraphhub.s3.amazonaws.com/datasets/"
         
-        return urljoin(base_url, f"{name}.h5ad")
+        if _REQUESTS_AVAILABLE:
+            return urljoin(base_url, f"{name}.h5ad")
+        else:
+            return f"{base_url}{name}.h5ad"
     
     def get_tasks_summary(self) -> Dict[str, List[str]]:
         """Get summary of available tasks and associated datasets.

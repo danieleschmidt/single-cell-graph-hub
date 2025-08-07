@@ -13,18 +13,22 @@ import pickle
 import hashlib
 from datetime import datetime
 
-import torch
-import numpy as np
-import pandas as pd
-from torch_geometric.data import Data
-
 logger = logging.getLogger(__name__)
 
+# Optional imports for full functionality
 try:
+    import torch
     import numpy as np
+    import pandas as pd
+    from torch_geometric.data import Data
+    _TORCH_AVAILABLE = True
     _NUMPY_AVAILABLE = True
-except ImportError:
+    _PANDAS_AVAILABLE = True
+except ImportError as e:
+    _TORCH_AVAILABLE = False
     _NUMPY_AVAILABLE = False
+    _PANDAS_AVAILABLE = False
+    warnings.warn(f"Scientific computing libraries not available: {e}")
 
 
 def setup_logging(level: str = 'INFO', log_file: Optional[str] = None) -> logging.Logger:
