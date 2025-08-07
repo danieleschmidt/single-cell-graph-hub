@@ -1,0 +1,94 @@
+{
+  "timestamp": 1754576079.870909,
+  "test_suites": {
+    "test_basic.py": {
+      "file": "/root/repo/tests/test_basic.py",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/root/repo/tests/test_basic.py\", line 3, in <module>\n    import pytest\nModuleNotFoundError: No module named 'pytest'\n",
+      "success": false,
+      "tests_run": 0,
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    "test_core_functionality.py": {
+      "file": "/root/repo/tests/test_core_functionality.py",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/root/repo/tests/test_core_functionality.py\", line 3, in <module>\n    import pytest\nModuleNotFoundError: No module named 'pytest'\n",
+      "success": false,
+      "tests_run": 0,
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    "test_integration.py": {
+      "file": "/root/repo/tests/test_integration.py",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/root/repo/tests/test_integration.py\", line 3, in <module>\n    import pytest\nModuleNotFoundError: No module named 'pytest'\n",
+      "success": false,
+      "tests_run": 0,
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    "test_comprehensive_coverage.py": {
+      "file": "/root/repo/tests/test_comprehensive_coverage.py",
+      "exit_code": 1,
+      "stdout": "Running Comprehensive Coverage Tests\n=============================================\n\nTestCatalogFunctionality:\n-----------------------------------\n  test_catalog_dataset_info... \u2705 PASS\n  test_catalog_dataset_listing... \u274c FAIL: \n  test_catalog_filtering... \u2705 PASS\n  test_catalog_search_functionality... \u2705 PASS\n  test_default_catalog_creation... \u2705 PASS\n\nTestSimpleDatasetFunctionality:\n-----------------------------------\n  test_dataset_with_different_parameters... \u2705 PASS\n  test_simple_dataset_creation... \u2705 PASS\n  test_simple_dataset_data_access... \u2705 PASS\n  test_simple_dataset_info... \u2705 PASS\n  test_simple_graph_data_structure... \u2705 PASS\n\nTestUtilityFunctions:\n-----------------------------------\n  test_check_dependencies... \u2705 PASS\n  test_validate_dataset_config... \u274c FAIL: Missing required field: modality\n\nTestQuickStartFunctions:\n-----------------------------------\n  test_simple_quick_start_custom_dataset... \u2705 PASS\n  test_simple_quick_start_default... \u2705 PASS\n  test_simple_quick_start_with_kwargs... \u2705 PASS\n\nTestErrorHandlingAndEdgeCases:\n-----------------------------------\n  test_catalog_edge_cases... \u274c FAIL: \"Dataset 'completely_nonexistent_dataset' not found. Available datasets: pbmc_10k, tabula_muris, brain_atlas, embryo_development, spatial_heart, pancreas_integrated, immune_covid, lung_atlas_10x, retina_development, liver_zonation, multiome_pbmc\"\n  test_invalid_dataset_name_handling... \u2705 PASS\n  test_missing_directory_handling... \u2705 PASS\n\nTestModuleStructureAndImports:\n-----------------------------------\n  test_graceful_import_behavior... \u2705 PASS\n  test_main_module_attributes... \u2705 PASS\n  test_scalability_features_availability... \u2705 PASS\n  test_version_format... \u2705 PASS\n\nTestDataStructuresAndTypes:\n-----------------------------------\n  test_catalog_data_structure... \u2705 PASS\n  test_dataset_metadata_handling... \u2705 PASS\n  test_simple_graph_data_properties... \u2705 PASS\n\nTestFunctionCoverage:\n-----------------------------------\n  test_all_catalog_methods... \u2705 PASS\n\n=============================================\nTotal tests: 26\nPassed: 23\nFailed: 3\n=============================================\n\ud83d\udca5 Some comprehensive coverage tests failed!\n",
+      "stderr": "/root/repo/tests/../src/scgraph_hub/catalog.py:19: UserWarning: requests not available - download functionality disabled\n  warnings.warn(\"requests not available - download functionality disabled\")\n/root/repo/tests/../src/scgraph_hub/utils.py:31: UserWarning: Scientific computing libraries not available: No module named 'torch'\n  warnings.warn(f\"Scientific computing libraries not available: {e}\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_params' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:187: UserWarning: NumPy not available - creating minimal data structure\n  warnings.warn(\"NumPy not available - creating minimal data structure\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'another_test' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_dataset' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_data' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/utils.py:108: UserWarning: Missing dependencies: torch, torch-geometric, scikit-learn. Install with: pip install single-cell-graph-hub[full]\n  warnings.warn(\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'brain_cortex' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_dataset' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:187: UserWarning: NumPy not available - creating minimal data structure\n  warnings.warn(\"NumPy not available - creating minimal data structure\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n",
+      "success": false,
+      "tests_run": 26,
+      "tests_passed": 23,
+      "tests_failed": 3
+    },
+    "test_basic_functionality.py": {
+      "file": "/root/repo/tests/test_basic_functionality.py",
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/root/repo/tests/test_basic_functionality.py\", line 11, in <module>\n    import pytest\nModuleNotFoundError: No module named 'pytest'\n",
+      "success": false,
+      "tests_run": 0,
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    "test_generation2_robust.py": {
+      "file": "/root/repo/tests/test_generation2_robust.py",
+      "exit_code": 0,
+      "stdout": "Running Generation 2 Robust Features Tests\n==================================================\n\nTestRobustErrorHandling:\n------------------------------\n  test_error_collector... \u2705 PASS\n  test_error_context... \u2705 PASS\n  test_exception_hierarchy... \u2705 PASS\n  test_graceful_import_fallback... \u2705 PASS\n\nTestSecurityValidation:\n------------------------------\n  test_data_sanitization... \u2705 PASS\n  test_existing_security_features... \u2705 PASS\n  test_security_import_handling... \u2705 PASS\n\nTestHealthChecks:\n------------------------------\n  test_health_status_class... \u2705 PASS\n\nTestAdvancedDatasetProcessing:\n------------------------------\n  test_enhanced_dataset_availability... \u2705 PASS\n  test_simple_dataset_still_works... \u2705 PASS\n\nTestLoggingSystem:\n------------------------------\n  test_basic_logging_config_class... \u2705 PASS\n  test_logging_import_handling... \u2705 PASS\n\nTestIntegrationWorkflow:\n------------------------------\n  test_basic_workflow_with_error_handling... \u2705 PASS\n  test_error_handling_in_dataset_loading... \u2705 PASS\n  test_graceful_degradation... \u2705 PASS\n\nTestRobustArchitecture:\n------------------------------\n  test_exception_system_design... \u2705 PASS\n  test_package_structure... \u2705 PASS\n  test_security_system_design... \u2705 PASS\n\n==================================================\nTotal tests: 18\nPassed: 18\nFailed: 0\n==================================================\n\ud83c\udf89 All Generation 2 tests passed!\n",
+      "stderr": "/root/repo/tests/../src/scgraph_hub/catalog.py:19: UserWarning: requests not available - download functionality disabled\n  warnings.warn(\"requests not available - download functionality disabled\")\n/root/repo/tests/../src/scgraph_hub/utils.py:31: UserWarning: Scientific computing libraries not available: No module named 'torch'\n  warnings.warn(f\"Scientific computing libraries not available: {e}\")\nValue 10000000.0 clamped to maximum 1000000.0\nValue -10000000.0 clamped to minimum -1000000.0\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_dataset' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:187: UserWarning: NumPy not available - creating minimal data structure\n  warnings.warn(\"NumPy not available - creating minimal data structure\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'invalid_dataset_xyz' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n",
+      "success": true,
+      "tests_run": 18,
+      "tests_passed": 18,
+      "tests_failed": 0
+    },
+    "test_generation3_optimized.py": {
+      "file": "/root/repo/tests/test_generation3_optimized.py",
+      "exit_code": 0,
+      "stdout": "Running Generation 3 Optimized Features Tests\n=======================================================\n\nTestPerformanceOptimization:\n----------------------------------------\n  test_auto_scale_context_manager... \u23ed\ufe0f  Auto-scale not available (missing dependencies)\n\u2705 PASS\n  test_high_performance_caching_decorator... \u23ed\ufe0f  High-performance caching not available (missing dependencies)\n\u2705 PASS\n  test_performance_optimizer_initialization... \u23ed\ufe0f  Performance optimizer not available (missing dependencies)\n\u2705 PASS\n  test_performance_report_generation... \u23ed\ufe0f  Performance reporting not available (missing dependencies)\n\u2705 PASS\n\nTestDistributedProcessing:\n----------------------------------------\n  test_distributed_task_decorator... \u23ed\ufe0f  Distributed task decorator not available (missing dependencies)\n\u2705 PASS\n  test_distributed_task_manager_availability... \u2705 Distributed processing classes available\n\u2705 PASS\n  test_task_manager_initialization... \u23ed\ufe0f  Task manager not available (missing dependencies)\n\u2705 PASS\n  test_task_submission_and_status... \u23ed\ufe0f  Task submission not available (missing dependencies)\n\u2705 PASS\n\nTestScalabilityFeatures:\n----------------------------------------\n  test_auto_scaler_initialization... \u23ed\ufe0f  AutoScaler not available (missing dependencies)\n\u2705 PASS\n  test_load_balancer_initialization... \u23ed\ufe0f  LoadBalancer not available (missing dependencies)\n\u2705 PASS\n  test_worker_node_and_task_classes... \u23ed\ufe0f  WorkerNode and Task classes not available (missing dependencies)\n\u2705 PASS\n\nTestIntegratedOptimization:\n----------------------------------------\n  test_basic_workflow_without_heavy_dependencies... \u2705 Basic workflow components work without heavy dependencies\n\u2705 PASS\n  test_integrated_workflow_components... \u2705 Available components: 5/5\n   Available: get_performance_optimizer, get_distributed_task_manager, auto_scale, high_performance, simple_quick_start\n\u2705 PASS\n  test_optimized_dataset_processing... \u23ed\ufe0f  Optimized processing not available (missing dependencies)\n\u2705 PASS\n\nTestErrorHandlingAndGracefulDegradation:\n----------------------------------------\n  test_feature_availability_detection... \ud83d\udcca Feature availability: 6/6 available\n   \u2705 Available: PerformanceOptimizer, DistributedTaskManager, LoadBalancer, AutoScaler, high_performance, auto_scale\n\u2705 PASS\n  test_graceful_import_handling... \u2705 Package imports gracefully handle missing dependencies\n\u2705 PASS\n  test_placeholder_error_messages... \u2705 Placeholder functions provide helpful error messages\n\u2705 PASS\n\n=======================================================\nTotal tests: 17\nPassed: 17\nFailed: 0\n=======================================================\n\ud83c\udf89 All Generation 3 tests passed!\n",
+      "stderr": "/root/repo/tests/../src/scgraph_hub/catalog.py:19: UserWarning: requests not available - download functionality disabled\n  warnings.warn(\"requests not available - download functionality disabled\")\n/root/repo/tests/../src/scgraph_hub/utils.py:31: UserWarning: Scientific computing libraries not available: No module named 'torch'\n  warnings.warn(f\"Scientific computing libraries not available: {e}\")\n/root/repo/tests/test_generation3_optimized.py:194: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\n  last_heartbeat=datetime.utcnow(),\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:108: UserWarning: Dataset 'test_dataset' not found in catalog, using defaults\n  warnings.warn(f\"Dataset '{self.name}' not found in catalog, using defaults\")\n/root/repo/tests/../src/scgraph_hub/simple_dataset.py:187: UserWarning: NumPy not available - creating minimal data structure\n  warnings.warn(\"NumPy not available - creating minimal data structure\")\n",
+      "success": true,
+      "tests_run": 17,
+      "tests_passed": 17,
+      "tests_failed": 0
+    }
+  },
+  "coverage": {
+    "estimated_coverage_percent": 21.352313167259787,
+    "total_source_lines": 10010,
+    "total_functions": 562,
+    "total_test_functions": 120,
+    "source_files": 26,
+    "test_files": 7,
+    "meets_85_percent_threshold": false
+  },
+  "quality_metrics": {
+    "package_importable": true,
+    "basic_functionality_works": true,
+    "error_handling_robust": true,
+    "documentation_complete": true,
+    "dependency_handling_graceful": true,
+    "performance_optimizations_available": false,
+    "security_features_implemented": true
+  },
+  "overall_status": "FAILED"
+}

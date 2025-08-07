@@ -4,9 +4,44 @@ import logging
 import logging.config
 import sys
 import os
+import json
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
+
+
+class JsonFormatter(logging.Formatter):
+    """JSON formatter for structured logging."""
+    
+    def format(self, record):
+        """Format log record as JSON."""
+        log_entry = {
+            'timestamp': datetime.fromtimestamp(record.created).isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno,
+            'thread': record.thread,
+            'thread_name': record.threadName
+        }
+        
+        # Add exception info if present
+        if record.exc_info:
+            log_entry['exception'] = self.formatException(record.exc_info)
+        
+        # Add extra fields from the record
+        extra_fields = {k: v for k, v in record.__dict__.items() 
+                       if k not in ('name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+                                   'filename', 'module', 'exc_info', 'exc_text', 'stack_info',
+                                   'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
+                                   'thread', 'threadName', 'processName', 'process', 'message')}
+        
+        if extra_fields:
+            log_entry.update(extra_fields)
+        
+        return json.dumps(log_entry)
 
 
 def setup_logging(
@@ -47,6 +82,71 @@ def setup_logging(
         log_file = f"scgraph_hub_{timestamp}.log"
     
     log_path = log_dir / log_file
+    
+    # Enhanced logging configuration with structured logging
+    config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            },
+            'detailed': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(funcName)s:%(lineno)d - %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            },
+            'json': {
+                '()': 'scgraph_hub.logging_config.JsonFormatter',
+            }
+        },
+        'handlers': {
+            'file': {
+                'level': level,
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': str(log_path),
+                'maxBytes': max_bytes,
+                'backupCount': backup_count,
+                'formatter': 'json' if json_format else 'detailed',
+                'encoding': 'utf-8'
+            }
+        },
+        'loggers': {
+            'scgraph_hub': {
+                'level': level,
+                'handlers': ['file'],
+                'propagate': False
+            },
+            'scgraph_hub.api': {
+                'level': level,
+                'handlers': ['file'],
+                'propagate': False
+            },
+            'scgraph_hub.dataset': {
+                'level': level,
+                'handlers': ['file'],
+                'propagate': False
+            },
+            'scgraph_hub.models': {
+                'level': level,
+                'handlers': ['file'],
+                'propagate': False
+            }
+        }
+    }
+    
+    # Add console handler if enabled
+    if enable_console:
+        config['handlers']['console'] = {
+            'level': level,
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'standard'
+        }
+        
+        # Add console to all loggers
+        for logger_config in config['loggers'].values():
+            logger_config['handlers'].append('console')
     
     # Create formatters
     if json_format:

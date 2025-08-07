@@ -1,15 +1,28 @@
 """Health checks and system monitoring for Single-Cell Graph Hub."""
 
 import time
-import psutil
 import asyncio
+import subprocess
+import shutil
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from pathlib import Path
-import torch
 
 from .logging_config import get_logger
-from .exceptions import SCGraphHubError
+from .exceptions import SCGraphHubError, handle_error_gracefully, create_error_context
+
+# Optional imports with graceful handling
+try:
+    import psutil
+    _PSUTIL_AVAILABLE = True
+except ImportError:
+    _PSUTIL_AVAILABLE = False
+
+try:
+    import torch
+    _TORCH_AVAILABLE = True
+except ImportError:
+    _TORCH_AVAILABLE = False
 
 logger = get_logger(__name__)
 
@@ -73,60 +86,90 @@ class SystemHealthChecker:
         
         return checks
     
+    @handle_error_gracefully
     async def _check_system_resources(self) -> HealthStatus:
         """Check system resource usage."""
-        try:
+        if not _PSUTIL_AVAILABLE:
+            return HealthStatus(
+                "system_resources",
+                "degraded",
+                "psutil not available - limited resource monitoring",
+                {"psutil_available": False}
+            )
+        
+        with create_error_context("system resource check"):
             # Memory check
             memory = psutil.virtual_memory()
             memory_percent = memory.percent
             
             # CPU check
-            cpu_percent = psutil.cpu_percent(interval=1)
+            cpu_percent = psutil.cpu_percent(interval=0.1)  # Faster check
+            
+            # Disk usage check
+            disk_usage = shutil.disk_usage('/')
+            disk_percent = (disk_usage.used / disk_usage.total) * 100
             
             # Load average (Unix only)
             load_avg = None
             try:
-                load_avg = psutil.getloadavg()
-            except AttributeError:
+                if hasattr(psutil, 'getloadavg'):
+                    load_avg = psutil.getloadavg()
+            except (AttributeError, OSError):
                 pass  # Windows doesn't have load average
             
             details = {
-                "memory_percent": memory_percent,
-                "memory_available_gb": memory.available / (1024**3),
-                "cpu_percent": cpu_percent,
-                "load_average": load_avg
+                "memory_percent": round(memory_percent, 1),
+                "memory_available_gb": round(memory.available / (1024**3), 2),
+                "memory_total_gb": round(memory.total / (1024**3), 2),
+                "cpu_percent": round(cpu_percent, 1),
+                "disk_percent": round(disk_percent, 1),
+                "disk_free_gb": round(disk_usage.free / (1024**3), 2),
+                "load_average": [round(x, 2) for x in load_avg] if load_avg else None,
+                "cpu_count": psutil.cpu_count(),
+                "boot_time": datetime.fromtimestamp(psutil.boot_time()).isoformat()
             }
             
-            # Determine status
-            if memory_percent > self.memory_threshold or cpu_percent > self.cpu_threshold:
+            # Determine status based on multiple factors
+            critical_issues = []
+            warnings = []
+            
+            if memory_percent > self.memory_threshold:
+                critical_issues.append(f"Memory usage critical: {memory_percent:.1f}%")
+            elif memory_percent > self.memory_threshold * 0.8:
+                warnings.append(f"Memory usage high: {memory_percent:.1f}%")
+            
+            if cpu_percent > self.cpu_threshold:
+                critical_issues.append(f"CPU usage critical: {cpu_percent:.1f}%")
+            elif cpu_percent > self.cpu_threshold * 0.8:
+                warnings.append(f"CPU usage high: {cpu_percent:.1f}%")
+            
+            if disk_percent > self.disk_threshold:
+                critical_issues.append(f"Disk usage critical: {disk_percent:.1f}%")
+            elif disk_percent > self.disk_threshold * 0.8:
+                warnings.append(f"Disk usage high: {disk_percent:.1f}%")
+            
+            # Return appropriate status
+            if critical_issues:
                 return HealthStatus(
                     "system_resources", 
                     "unhealthy",
-                    f"High resource usage: Memory {memory_percent:.1f}%, CPU {cpu_percent:.1f}%",
+                    "; ".join(critical_issues),
                     details
                 )
-            elif memory_percent > self.memory_threshold * 0.8 or cpu_percent > self.cpu_threshold * 0.8:
+            elif warnings:
                 return HealthStatus(
                     "system_resources",
                     "degraded", 
-                    f"Elevated resource usage: Memory {memory_percent:.1f}%, CPU {cpu_percent:.1f}%",
+                    "; ".join(warnings),
                     details
                 )
             else:
                 return HealthStatus(
                     "system_resources",
                     "healthy",
-                    f"Resource usage normal: Memory {memory_percent:.1f}%, CPU {cpu_percent:.1f}%",
+                    f"All resources normal (Mem: {memory_percent:.1f}%, CPU: {cpu_percent:.1f}%, Disk: {disk_percent:.1f}%)",
                     details
                 )
-                
-        except Exception as e:
-            logger.error(f"System resource check failed: {e}")
-            return HealthStatus(
-                "system_resources",
-                "unhealthy",
-                f"Failed to check system resources: {e}"
-            )
     
     async def _check_dependencies(self) -> HealthStatus:
         """Check if required dependencies are available."""

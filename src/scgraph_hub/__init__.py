@@ -20,6 +20,30 @@ from .catalog import DatasetCatalog, get_default_catalog
 # Simple dataset for basic functionality
 from .simple_dataset import SimpleSCGraphDataset, SimpleSCGraphData
 
+# Advanced functionality with error handling
+try:
+    from .advanced_dataset import DatasetProcessor, EnhancedSCGraphDataset
+    from .security import SecurityValidator, SecureFileHandler, get_security_validator
+    from .logging_config import setup_logging, get_logger, get_contextual_logger
+    from .health_checks import SystemHealthChecker, HealthStatus
+    _ADVANCED_AVAILABLE = True
+except ImportError:
+    _ADVANCED_AVAILABLE = False
+
+# Generation 3: Scalability and Performance features
+try:
+    from .performance import (
+        PerformanceOptimizer, PerformanceCache, ConcurrentProcessor, ResourceOptimizer,
+        get_performance_optimizer, high_performance, auto_scale
+    )
+    from .scalability import (
+        DistributedTaskManager, LoadBalancer, AutoScaler, WorkerNode, Task,
+        get_distributed_task_manager, distributed_task
+    )
+    _SCALABILITY_AVAILABLE = True
+except ImportError:
+    _SCALABILITY_AVAILABLE = False
+
 # Utility functions
 from .utils import check_dependencies, validate_dataset_config
 
@@ -32,6 +56,74 @@ __all__ = [
     "check_dependencies", 
     "validate_dataset_config"
 ]
+
+# Add advanced functionality if available
+if _ADVANCED_AVAILABLE:
+    __all__.extend([
+        "DatasetProcessor",
+        "EnhancedSCGraphDataset", 
+        "SecurityValidator",
+        "SecureFileHandler",
+        "get_security_validator",
+        "setup_logging",
+        "get_logger",
+        "get_contextual_logger",
+        "SystemHealthChecker",
+        "HealthStatus"
+    ])
+else:
+    # Provide placeholder functions for advanced features
+    def _advanced_feature_unavailable(*args, **kwargs):
+        raise ImportError("Advanced features require additional dependencies. Install with: pip install single-cell-graph-hub[full]")
+    
+    DatasetProcessor = _advanced_feature_unavailable
+    EnhancedSCGraphDataset = _advanced_feature_unavailable
+    SecurityValidator = _advanced_feature_unavailable
+    SecureFileHandler = _advanced_feature_unavailable
+    get_security_validator = _advanced_feature_unavailable
+    setup_logging = _advanced_feature_unavailable
+    get_logger = _advanced_feature_unavailable
+    get_contextual_logger = _advanced_feature_unavailable
+    SystemHealthChecker = _advanced_feature_unavailable
+    HealthStatus = _advanced_feature_unavailable
+
+# Add scalability features if available
+if _SCALABILITY_AVAILABLE:
+    __all__.extend([
+        "PerformanceOptimizer",
+        "PerformanceCache", 
+        "ConcurrentProcessor",
+        "ResourceOptimizer",
+        "get_performance_optimizer",
+        "high_performance",
+        "auto_scale",
+        "DistributedTaskManager",
+        "LoadBalancer",
+        "AutoScaler", 
+        "WorkerNode",
+        "Task",
+        "get_distributed_task_manager",
+        "distributed_task"
+    ])
+else:
+    # Provide placeholder functions for scalability features
+    def _scalability_feature_unavailable(*args, **kwargs):
+        raise ImportError("Scalability features require additional dependencies. Install with: pip install single-cell-graph-hub[scalability]")
+    
+    PerformanceOptimizer = _scalability_feature_unavailable
+    PerformanceCache = _scalability_feature_unavailable
+    ConcurrentProcessor = _scalability_feature_unavailable
+    ResourceOptimizer = _scalability_feature_unavailable
+    get_performance_optimizer = _scalability_feature_unavailable
+    high_performance = _scalability_feature_unavailable
+    auto_scale = _scalability_feature_unavailable
+    DistributedTaskManager = _scalability_feature_unavailable
+    LoadBalancer = _scalability_feature_unavailable
+    AutoScaler = _scalability_feature_unavailable
+    WorkerNode = _scalability_feature_unavailable
+    Task = _scalability_feature_unavailable
+    get_distributed_task_manager = _scalability_feature_unavailable
+    distributed_task = _scalability_feature_unavailable
 
 # Export core functionality if available
 if _CORE_AVAILABLE:
