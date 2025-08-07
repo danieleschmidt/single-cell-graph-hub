@@ -4,10 +4,13 @@ import logging
 import hashlib
 import secrets
 import tempfile
+import time
 import os
 from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
 import warnings
+
+from .exceptions import SCGraphHubError
 
 logger = logging.getLogger(__name__)
 
@@ -382,9 +385,19 @@ class ResourceMonitor:
         return True
 
 
-class SecurityError(Exception):
+class SecurityError(SCGraphHubError):
     """Custom exception for security violations."""
-    pass
+    
+    def __init__(self, security_issue: str, details: Optional[str] = None):
+        message = f"Security violation: {security_issue}"
+        if details:
+            message += f" - {details}"
+        
+        super().__init__(
+            message=message,
+            error_code="SECURITY_VIOLATION",
+            details={"security_issue": security_issue, "violation_details": details}
+        )
 
 
 # Utility functions
