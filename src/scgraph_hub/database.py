@@ -20,7 +20,7 @@ from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.pool import StaticPool
 import redis
 from pydantic import BaseModel
-import aioredis
+# import aioredis  # Temporarily disabled due to Python 3.12 compatibility
 
 
 logger = logging.getLogger(__name__)

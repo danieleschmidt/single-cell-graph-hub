@@ -209,6 +209,8 @@ __marimo__/
 # Single-cell data files
 data/
 datasets/
+demo_data/
+temp_data/
 *.h5
 *.h5ad
 *.zarr
@@ -216,6 +218,7 @@ datasets/
 *.loom
 *.mtx
 *.txt.gz
+processed_data.json
 
 # Model files
 models/
