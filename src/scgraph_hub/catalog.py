@@ -54,6 +54,7 @@ class DatasetCatalog:
                 "organism": "human",
                 "tissue": "blood",
                 "n_cell_types": 8,
+                "n_classes": 8,
                 "has_spatial": False,
                 "graph_method": "knn",
                 "tasks": ["cell_type_prediction", "gene_imputation"],
