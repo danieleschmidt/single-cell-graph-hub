@@ -1,0 +1,463 @@
+[
+  {
+    "algorithm_id": "gen1_cross_1755194962_992",
+    "parent_algorithms": [
+      "gen0_algo_1",
+      "gen0_algo_2"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "attention_gat",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [
+      {
+        "accuracy": 0.9411068257807536,
+        "f1_score": 0.9181388551973256,
+        "auc": 0.9296673419539735,
+        "computational_efficiency": 0.9331638645314115
+      }
+    ],
+    "evolutionary_generation": 1,
+    "fitness_score": 0.9311342417154351,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen2_cross_1755194962_426",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_883",
+      "gen1_cross_1755194962_655"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 256,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true
+    },
+    "performance_history": [
+      {
+        "accuracy": 0.9467327254109033,
+        "f1_score": 0.9163427520209985,
+        "auc": 0.9407496539534279,
+        "computational_efficiency": 0.8678585012588653
+      }
+    ],
+    "evolutionary_generation": 2,
+    "fitness_score": 0.9285316966872329,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen2_mut_1755194962_590",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_110"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "gat",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 256
+    },
+    "performance_history": [
+      {
+        "accuracy": 0.9584428648001747,
+        "f1_score": 0.9207167099690965,
+        "auc": 0.9419370002991547,
+        "computational_efficiency": 0.8038454494374335
+      }
+    ],
+    "evolutionary_generation": 2,
+    "fitness_score": 0.9283641039143732,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen2_cross_1755194962_417",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_992",
+      "gen1_cross_1755194962_992"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "attention_gat",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [
+      {
+        "accuracy": 0.9763286426803007,
+        "f1_score": 0.8743326132787923,
+        "auc": 0.9540619180052303,
+        "computational_efficiency": 0.8471492916677356
+      }
+    ],
+    "evolutionary_generation": 2,
+    "fitness_score": 0.9283585538235776,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_139",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_426",
+      "gen2_cross_1755194962_316"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true,
+      "hidden_dim": 256
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_419",
+    "parent_algorithms": [
+      "gen2_mut_1755194962_630"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "attention_gat",
+      "biological_priors": true,
+      "dropout": 0.31268064308298915,
+      "attention_mechanism": true,
+      "hidden_dim": 185
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_682",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_345",
+      "gen2_cross_1755194962_417"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_263",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_459"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "gat",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_798",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_379",
+      "gen2_cross_1755194962_417"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_143",
+    "parent_algorithms": [
+      "gen2_mut_1755194962_590",
+      "gen2_mut_1755194962_720"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 256,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_379",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_495",
+      "gen2_cross_1755194962_417"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_125",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_426"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 256,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_553",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_417",
+      "gen2_cross_1755194962_655"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "attention_gat",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_431",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_345",
+      "gen1_cross_1755194962_459"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "gat",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_433",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_495"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.20554187868048251,
+      "biological_priors": true,
+      "attention_mechanism": true,
+      "hidden_dim": 154
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_684",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_655",
+      "gen2_cross_1755194962_655"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true,
+      "hidden_dim": 128
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_361",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_992",
+      "gen2_cross_1755194962_655"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_546",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_479"
+    ],
+    "architecture_config": {
+      "specialization": "attention",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "biological"
+  },
+  {
+    "algorithm_id": "gen3_cross_1755194962_521",
+    "parent_algorithms": [
+      "gen1_cross_1755194962_459",
+      "gen2_cross_1755194962_316"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "gat",
+      "num_heads": 4,
+      "name": "biological_prior_gnn",
+      "biological_priors": true,
+      "dropout": 0.3,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  },
+  {
+    "algorithm_id": "gen3_mut_1755194962_744",
+    "parent_algorithms": [
+      "gen2_cross_1755194962_417"
+    ],
+    "architecture_config": {
+      "specialization": "biological",
+      "pathway_attention": true,
+      "hidden_dim": 128,
+      "architecture": "custom",
+      "num_heads": 4,
+      "name": "attention_gat",
+      "dropout": 0.3,
+      "biological_priors": true,
+      "attention_mechanism": true
+    },
+    "performance_history": [],
+    "evolutionary_generation": 3,
+    "fitness_score": 0.0,
+    "specialization": "attention"
+  }
+]

@@ -1,0 +1,36 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-08-14T18:15:35.754668",
+    "report_type": "comprehensive_security_report",
+    "framework_version": "1.0"
+  },
+  "security_dashboard": {
+    "timestamp": "2025-08-14T18:15:35.752423",
+    "security_status": "orange",
+    "active_sessions": 1,
+    "recent_events_24h": 8,
+    "event_statistics": {
+      "by_type": {
+        "authentication_failed": 6,
+        "access_denied": 2
+      },
+      "by_severity": {
+        "medium": 6,
+        "high": 2
+      }
+    },
+    "active_sessions_detail": {
+      "dAP4xJo6O8Pz2idwBVXydiSIwz15N96Ui6vgtHFy2-w": {
+        "username": "researcher_alice",
+        "created_at": "2025-08-14T18:15:33.748285",
+        "last_activity": "2025-08-14T18:15:33.750810"
+      }
+    },
+    "threat_monitoring_active": true,
+    "recent_critical_events": []
+  },
+  "audit_report_path": "security_audit_report_20250814_181535.json",
+  "security_recommendations": [
+    "Security posture is good - maintain current controls"
+  ]
+}
