@@ -1,0 +1,205 @@
+[
+  {
+    "alert_id": "632d3cfebd3e",
+    "timestamp": "2025-08-14T18:15:33.748795",
+    "event": {
+      "event_id": "01597525e8e5cb44",
+      "timestamp": "2025-08-14T18:15:33.748625",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "65ae14c50c7096f3",
+      "resource": "research_data",
+      "action": "read",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "read_dataset",
+        "required_clearance": "internal"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "7b326f4f2419",
+    "timestamp": "2025-08-14T18:15:33.750985",
+    "event": {
+      "event_id": "dd9f8a7a648829bb",
+      "timestamp": "2025-08-14T18:15:33.750884",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "65ae14c50c7096f3",
+      "resource": "system_config",
+      "action": "delete",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "delete_system_config",
+        "required_clearance": "top_secret"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "b94574f9b8ff",
+    "timestamp": "2025-08-14T18:18:01.892499",
+    "event": {
+      "event_id": "27999c9ccab7b073",
+      "timestamp": "2025-08-14T18:18:01.892415",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "f0dd218076576c42",
+      "resource": "research_data",
+      "action": "read",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "read_research_data",
+        "required_clearance": "internal"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "f5cd6e884096",
+    "timestamp": "2025-08-14T18:18:01.893330",
+    "event": {
+      "event_id": "64fb3e97d0f9ad8a",
+      "timestamp": "2025-08-14T18:18:01.893276",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "f0dd218076576c42",
+      "resource": "system_config",
+      "action": "delete",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "delete_system_config",
+        "required_clearance": "top_secret"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "ff521d25db36",
+    "timestamp": "2025-08-14T18:18:01.893950",
+    "event": {
+      "event_id": "c943e2dee22767a7",
+      "timestamp": "2025-08-14T18:18:01.893892",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "f0dd218076576c42",
+      "resource": "user_accounts",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "admin_user_management",
+        "required_clearance": "top_secret"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "a135d7c7317d",
+    "timestamp": "2025-08-14T18:18:01.894779",
+    "event": {
+      "event_id": "a4514149c0e43127",
+      "timestamp": "2025-08-14T18:18:01.894740",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 1
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "255432ecc305",
+    "timestamp": "2025-08-14T18:18:01.895336",
+    "event": {
+      "event_id": "86e3a74bfa35c067",
+      "timestamp": "2025-08-14T18:18:01.895272",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 2
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "ee10872d2654",
+    "timestamp": "2025-08-14T18:18:01.895935",
+    "event": {
+      "event_id": "eca838fc3bfe9899",
+      "timestamp": "2025-08-14T18:18:01.895871",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 3
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "ffe07f02f9e5",
+    "timestamp": "2025-08-14T18:18:01.896553",
+    "event": {
+      "event_id": "8abce11a979fb401",
+      "timestamp": "2025-08-14T18:18:01.896488",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 4
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  }
+]

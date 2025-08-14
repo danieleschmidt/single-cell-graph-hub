@@ -1,0 +1,72 @@
+[
+  {
+    "hypothesis_id": "hyp_1755194962_1801",
+    "description": "Integration of Causal inference in single-cell trajectories with biological_priors, hierarchical_processing",
+    "motivation": "Combining causality_aware_gnns with proven patterns to achieve breakthrough performance",
+    "expected_improvement": 0.19,
+    "algorithm_modifications": {
+      "base_architecture": "adaptive_gnn",
+      "frontier_integration": "causality_aware_gnns",
+      "pattern_combinations": [
+        "biological_priors",
+        "hierarchical_processing"
+      ],
+      "novel_components": {
+        "causal_discovery_layers": true,
+        "intervention_simulation": true,
+        "counterfactual_reasoning": true,
+        "causal_attention_weights": true,
+        "pathway_constraints": true,
+        "gene_ontology_regularization": true,
+        "biological_loss_weight": 0.3
+      }
+    },
+    "test_datasets": [
+      "pbmc_10k",
+      "brain_atlas",
+      "immune_atlas"
+    ],
+    "success_criteria": {
+      "accuracy_improvement": 0.15200000000000002,
+      "statistical_significance": 0.05,
+      "reproducibility_score": 0.9,
+      "computational_efficiency": 0.8
+    },
+    "generated_timestamp": "2025-08-14T18:09:22.200214"
+  },
+  {
+    "hypothesis_id": "hyp_1755194962_9288",
+    "description": "Integration of Brain-inspired computing for cell networks with temporal_modeling, biological_priors",
+    "motivation": "Combining neuromorphic_gnns with proven patterns to achieve breakthrough performance",
+    "expected_improvement": 0.31,
+    "algorithm_modifications": {
+      "base_architecture": "adaptive_gnn",
+      "frontier_integration": "neuromorphic_gnns",
+      "pattern_combinations": [
+        "temporal_modeling",
+        "biological_priors"
+      ],
+      "novel_components": {
+        "spiking_neurons": true,
+        "temporal_coding": true,
+        "synaptic_plasticity": true,
+        "energy_efficiency": 0.9,
+        "pathway_constraints": true,
+        "gene_ontology_regularization": true,
+        "biological_loss_weight": 0.3
+      }
+    },
+    "test_datasets": [
+      "pbmc_10k",
+      "brain_atlas",
+      "immune_atlas"
+    ],
+    "success_criteria": {
+      "accuracy_improvement": 0.248,
+      "statistical_significance": 0.05,
+      "reproducibility_score": 0.9,
+      "computational_efficiency": 0.8
+    },
+    "generated_timestamp": "2025-08-14T18:09:22.200238"
+  }
+]

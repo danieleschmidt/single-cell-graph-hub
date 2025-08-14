@@ -322,3 +322,7 @@ class SimpleSCGraphDataset:
             "num_classes": self.num_classes,
             **self._metadata
         }
+    
+    def get_info(self) -> Dict[str, Any]:
+        """Alias for info() method for compatibility."""
+        return self.info()

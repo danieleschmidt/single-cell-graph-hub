@@ -1,0 +1,268 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-08-14T18:15:26.382346",
+    "monitoring_interval": 5,
+    "total_faults": 6
+  },
+  "system_health": {
+    "timestamp": "2025-08-14T18:15:26.382666",
+    "overall_health": "healthy",
+    "healthy_components": 3,
+    "total_components": 3,
+    "component_statuses": {
+      "DataLoader": {
+        "healthy": true,
+        "metrics": {
+          "status": "healthy",
+          "file_count": 1,
+          "available_gb": 19.878345489501953,
+          "data_directory": "data"
+        }
+      },
+      "Model": {
+        "healthy": true,
+        "metrics": {
+          "status": "healthy",
+          "accuracy": 0.866,
+          "memory_usage_mb": 192,
+          "inference_time_ms": 55.0,
+          "model_state": "uninitialized",
+          "performance_trend": "declining"
+        }
+      },
+      "Database": {
+        "healthy": true,
+        "metrics": {
+          "status": "healthy",
+          "db_size_mb": 8.296966552734375e-05,
+          "connection_time_ms": 17.0,
+          "active_connections": 0,
+          "max_connections": 5
+        }
+      }
+    },
+    "fault_summary": {
+      "total_faults_24h": 6,
+      "critical_faults_24h": 0,
+      "recovery_success_rate": 1.0
+    },
+    "system_state": {
+      "timestamp": "2025-08-14T18:15:26.382721",
+      "uptime_seconds": 7.009443,
+      "system_resources": {
+        "cpu_percent": 25.0,
+        "memory_total_gb": 8.0,
+        "memory_used_gb": 4.0,
+        "memory_percent": 50.0,
+        "disk_total_gb": 100.0,
+        "disk_used_gb": 50.0,
+        "disk_percent": 50.0
+      },
+      "process_info": {
+        "pid": 1790,
+        "note": "psutil not available - using simulated values"
+      },
+      "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+      "platform": "linux"
+    },
+    "monitoring_active": true
+  },
+  "fault_history": [
+    {
+      "fault_id": "33f306cd75d3",
+      "timestamp": "2025-08-14T18:15:19.374364",
+      "severity": "low",
+      "component": "DataLoader",
+      "error_type": "str",
+      "error_message": "Data directory does not exist",
+      "stack_trace": null,
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:19.374438",
+        "uptime_seconds": 0.001199,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": null,
+      "recovery_success": true,
+      "recovery_time": 0.0005285739898681641
+    },
+    {
+      "fault_id": "58d039d4f8f6",
+      "timestamp": "2025-08-14T18:15:19.375257",
+      "severity": "low",
+      "component": "Database",
+      "error_type": "str",
+      "error_message": "Database file does not exist",
+      "stack_trace": null,
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:19.375290",
+        "uptime_seconds": 0.002012,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": null,
+      "recovery_success": true,
+      "recovery_time": 0.00020623207092285156
+    },
+    {
+      "fault_id": "10432c52e1dc",
+      "timestamp": "2025-08-14T18:15:25.380811",
+      "severity": "low",
+      "component": "DataLoader",
+      "error_type": "FileNotFoundError",
+      "error_message": "Test file not found",
+      "stack_trace": "NoneType: None\n",
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:25.381024",
+        "uptime_seconds": 6.007755,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": "fallback",
+      "recovery_success": true,
+      "recovery_time": null
+    },
+    {
+      "fault_id": "dc5c96e8d53a",
+      "timestamp": "2025-08-14T18:15:25.381284",
+      "severity": "low",
+      "component": "Model",
+      "error_type": "MemoryError",
+      "error_message": "Insufficient memory",
+      "stack_trace": "NoneType: None\n",
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:25.381359",
+        "uptime_seconds": 6.008083,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": "restart",
+      "recovery_success": true,
+      "recovery_time": null
+    },
+    {
+      "fault_id": "c2a84a921b52",
+      "timestamp": "2025-08-14T18:15:25.381537",
+      "severity": "high",
+      "component": "Database",
+      "error_type": "ConnectionError",
+      "error_message": "Database connection failed",
+      "stack_trace": "NoneType: None\n",
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:25.381598",
+        "uptime_seconds": 6.008321,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": "retry",
+      "recovery_success": true,
+      "recovery_time": null
+    },
+    {
+      "fault_id": "db02f80b66ad",
+      "timestamp": "2025-08-14T18:15:26.381965",
+      "severity": "low",
+      "component": "Preprocessing",
+      "error_type": "ValueError",
+      "error_message": "Invalid parameter",
+      "stack_trace": "NoneType: None\n",
+      "system_state": {
+        "timestamp": "2025-08-14T18:15:26.382090",
+        "uptime_seconds": 7.008821,
+        "system_resources": {
+          "cpu_percent": 25.0,
+          "memory_total_gb": 8.0,
+          "memory_used_gb": 4.0,
+          "memory_percent": 50.0,
+          "disk_total_gb": 100.0,
+          "disk_used_gb": 50.0,
+          "disk_percent": 50.0
+        },
+        "process_info": {
+          "pid": 1790,
+          "note": "psutil not available - using simulated values"
+        },
+        "python_version": "3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]",
+        "platform": "linux"
+      },
+      "recovery_strategy": "degrade",
+      "recovery_success": true,
+      "recovery_time": null
+    }
+  ],
+  "recovery_strategies": {
+    "FileNotFoundError": "fallback",
+    "MemoryError": "restart",
+    "ConnectionError": "retry",
+    "PermissionError": "fallback",
+    "TimeoutError": "retry",
+    "ValueError": "degrade",
+    "ImportError": "fallback",
+    "RuntimeError": "restart"
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "timestamp": "2025-08-14T18:33:03.885201",
+  "overall_status": "WARNING",
+  "quality_gates": {
+    "functionality": {
+      "status": "FAIL",
+      "score": 0.75,
+      "tests": {
+        "basic_imports": {
+          "passed": true,
+          "components_tested": 3
+        },
+        "dataset_operations": {
+          "passed": false,
+          "error": "'SimpleSCGraphDataset' object has no attribute 'get_info'"
+        },
+        "research_algorithms": {
+          "passed": true,
+          "algorithms_tested": 3,
+          "total_algorithms": 3
+        },
+        "core_functionality": {
+          "passed": true,
+          "package_version": "0.1.0",
+          "quick_start_works": true
+        }
+      },
+      "errors": [
+        "dataset_operations: 'SimpleSCGraphDataset' object has no attribute 'get_info'"
+      ]
+    },
+    "performance": {
+      "status": "PASS",
+      "score": 0.75,
+      "metrics": {
+        "cache_performance_ms": 0.6198883056640625,
+        "cache_hit_rate": 1.0,
+        "task_submission_time_ms": 13011.23309135437,
+        "tasks_submitted": 20
+      },
+      "errors": []
+    },
+    "security": {
+      "status": "FAIL",
+      "score": 0.0,
+      "security_features": {},
+      "errors": [
+        "'AuditLogger' object has no attribute 'ThreatLevel'"
+      ]
+    },
+    "reliability": {
+      "status": "PASS",
+      "score": 1.0,
+      "reliability_features": {
+        "health_checks_passed": 3,
+        "total_components": 3,
+        "recovery_successes": 2,
+        "total_exceptions_tested": 2,
+        "monitoring_functional": true,
+        "circuit_breaker_available": true
+      },
+      "errors": []
+    },
+    "scalability": {
+      "status": "PASS",
+      "score": 1.0,
+      "scalability_metrics": {
+        "cache_performance_scaling": [
+          0.0004220008850097656,
+          0.0015971660614013672,
+          0.0032672882080078125
+        ],
+        "task_throughput_scaling": [
+          24.874931575173605,
+          33.14464486870133,
+          33.16512647933497
+        ],
+        "cache_sizes_tested": [
+          100,
+          500,
+          1000
+        ],
+        "task_counts_tested": [
+          10,
+          20,
+          30
+        ]
+      },
+      "errors": []
+    },
+    "integration": {
+      "status": "PASS",
+      "score": 1.0,
+      "integration_tests": {
+        "research_performance": "PASS",
+        "security_performance": "PASS",
+        "fault_tolerance_security": "PASS",
+        "end_to_end": "PASS"
+      },
+      "errors": []
+    },
+    "documentation": {
+      "status": "PASS",
+      "score": 1.0,
+      "documentation_coverage": {
+        "README.md": "FOUND",
+        "LICENSE": "FOUND",
+        "pyproject.toml": "FOUND",
+        "CONTRIBUTING.md": "FOUND",
+        "CODE_OF_CONDUCT.md": "FOUND",
+        "modules_with_docstrings": "4/4"
+      },
+      "errors": []
+    },
+    "compliance": {
+      "status": "PASS",
+      "score": 1.0,
+      "compliance_checks": {
+        "package_structure": "PASS",
+        "error_handling": "PASS",
+        "import_structure": "PASS",
+        "configuration": "PASS",
+        "version_management": "PASS"
+      },
+      "errors": []
+    }
+  },
+  "pass_rate": 0.75,
+  "passed_gates": 6,
+  "total_gates": 8
+}

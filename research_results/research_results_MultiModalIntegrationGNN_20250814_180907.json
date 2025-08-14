@@ -1,0 +1,308 @@
+{
+  "metadata": {
+    "experiment_config": {
+      "experiment_id": "7ae2459f",
+      "algorithm_name": "Novel_Bio_GNN",
+      "dataset_names": [
+        "pbmc_10k",
+        "brain_atlas",
+        "immune_atlas"
+      ],
+      "metrics": [
+        "accuracy",
+        "f1_score",
+        "auc"
+      ],
+      "baseline_methods": [
+        "GCN",
+        "GAT",
+        "GraphSAGE"
+      ],
+      "num_runs": 5,
+      "statistical_threshold": 0.05
+    },
+    "algorithm_parameters": {
+      "modalities": [
+        "transcriptomics",
+        "epigenomics",
+        "proteomics"
+      ],
+      "num_modalities": 3,
+      "cross_modal_attention": true,
+      "modality_specific_encoders": true,
+      "integration_strategy": "late_fusion"
+    },
+    "timestamp": "20250814_180907"
+  },
+  "results": {
+    "experiment_id": "7ae2459f",
+    "algorithm_performance": {
+      "pbmc_10k": {
+        "accuracy_mean": 0.96,
+        "accuracy_std": 0.0,
+        "accuracy_min": 0.96,
+        "accuracy_max": 0.96,
+        "f1_score_mean": 0.9216,
+        "f1_score_std": 0.0,
+        "f1_score_min": 0.9216,
+        "f1_score_max": 0.9216,
+        "auc_mean": 0.9888,
+        "auc_std": 0.0,
+        "auc_min": 0.9888,
+        "auc_max": 0.9888
+      },
+      "brain_atlas": {
+        "accuracy_mean": 0.96,
+        "accuracy_std": 0.0,
+        "accuracy_min": 0.96,
+        "accuracy_max": 0.96,
+        "f1_score_mean": 0.9216,
+        "f1_score_std": 0.0,
+        "f1_score_min": 0.9216,
+        "f1_score_max": 0.9216,
+        "auc_mean": 0.9888,
+        "auc_std": 0.0,
+        "auc_min": 0.9888,
+        "auc_max": 0.9888
+      },
+      "immune_atlas": {
+        "accuracy_mean": 0.96,
+        "accuracy_std": 0.0,
+        "accuracy_min": 0.96,
+        "accuracy_max": 0.96,
+        "f1_score_mean": 0.9216,
+        "f1_score_std": 0.0,
+        "f1_score_min": 0.9216,
+        "f1_score_max": 0.9216,
+        "auc_mean": 0.9888,
+        "auc_std": 0.0,
+        "auc_min": 0.9888,
+        "auc_max": 0.9888
+      }
+    },
+    "baseline_performance": {
+      "pbmc_10k": {
+        "GCN": {
+          "accuracy_mean": 0.7869130163299983,
+          "accuracy_std": 0.03348592845438504,
+          "accuracy_min": 0.7326439141793465,
+          "accuracy_max": 0.8280437858851554,
+          "f1_score_mean": 0.7808727325395292,
+          "f1_score_std": 0.019641690456065067,
+          "f1_score_min": 0.7462072106940005,
+          "f1_score_max": 0.8034551351518897,
+          "auc_mean": 0.8422669551874901,
+          "auc_std": 0.022239011157850395,
+          "auc_min": 0.8040124386360531,
+          "auc_max": 0.8673604350532207
+        },
+        "GAT": {
+          "accuracy_mean": 0.817057259465861,
+          "accuracy_std": 0.02829061775840473,
+          "accuracy_min": 0.770670247255937,
+          "accuracy_max": 0.8502028997276203,
+          "f1_score_mean": 0.807811201235433,
+          "f1_score_std": 0.03181373119050494,
+          "f1_score_min": 0.7493925808257753,
+          "f1_score_max": 0.8320597473686946,
+          "auc_mean": 0.8564189962827863,
+          "auc_std": 0.014084339913975218,
+          "auc_min": 0.831971133511067,
+          "auc_max": 0.8746333741185165
+        },
+        "GraphSAGE": {
+          "accuracy_mean": 0.7972248598415991,
+          "accuracy_std": 0.03912650653594801,
+          "accuracy_min": 0.7576970366766862,
+          "accuracy_max": 0.8684634916807387,
+          "f1_score_mean": 0.7888756693398249,
+          "f1_score_std": 0.03714510451020037,
+          "f1_score_min": 0.7259257106825621,
+          "f1_score_max": 0.8275616753142943,
+          "auc_mean": 0.8647234968522632,
+          "auc_std": 0.02316722068888019,
+          "auc_min": 0.8362893191877996,
+          "auc_max": 0.899026035515941
+        }
+      },
+      "brain_atlas": {
+        "GCN": {
+          "accuracy_mean": 0.8154503772186521,
+          "accuracy_std": 0.035169450907352205,
+          "accuracy_min": 0.7511465466887728,
+          "accuracy_max": 0.8479253389123858,
+          "f1_score_mean": 0.7606494077029808,
+          "f1_score_std": 0.027278172942725352,
+          "f1_score_min": 0.7220139653832555,
+          "f1_score_max": 0.8049166903708268,
+          "auc_mean": 0.8345497106666112,
+          "auc_std": 0.028657560412482273,
+          "auc_min": 0.7902548337230825,
+          "auc_max": 0.870475629535058
+        },
+        "GAT": {
+          "accuracy_mean": 0.8055947806105758,
+          "accuracy_std": 0.019763389494392443,
+          "accuracy_min": 0.7724551732341249,
+          "accuracy_max": 0.8258073911692825,
+          "f1_score_mean": 0.7879764694395615,
+          "f1_score_std": 0.02426233565929734,
+          "f1_score_min": 0.749168081622958,
+          "f1_score_max": 0.8199029928682491,
+          "auc_mean": 0.8541644390306511,
+          "auc_std": 0.031592814155021375,
+          "auc_min": 0.8108033803325402,
+          "auc_max": 0.8984607904902207
+        },
+        "GraphSAGE": {
+          "accuracy_mean": 0.7903176241945042,
+          "accuracy_std": 0.052803595508601676,
+          "accuracy_min": 0.7304632330928218,
+          "accuracy_max": 0.8727656168914797,
+          "f1_score_mean": 0.7942500424387877,
+          "f1_score_std": 0.029198928274510892,
+          "f1_score_min": 0.7488919610131937,
+          "f1_score_max": 0.8319228861722142,
+          "auc_mean": 0.8474410585305943,
+          "auc_std": 0.043846572165093294,
+          "auc_min": 0.7912157443605324,
+          "auc_max": 0.8980198037826249
+        }
+      },
+      "immune_atlas": {
+        "GCN": {
+          "accuracy_mean": 0.7843506536007429,
+          "accuracy_std": 0.026136408334074136,
+          "accuracy_min": 0.7512471046129184,
+          "accuracy_max": 0.824603143294635,
+          "f1_score_mean": 0.7932451457567516,
+          "f1_score_std": 0.016641042869548404,
+          "f1_score_min": 0.7728066264956354,
+          "f1_score_max": 0.8134871637969879,
+          "auc_mean": 0.8344903007532182,
+          "auc_std": 0.023597371757669044,
+          "auc_min": 0.7956322640638205,
+          "auc_max": 0.8587079496052135
+        },
+        "GAT": {
+          "accuracy_mean": 0.8282948889479579,
+          "accuracy_std": 0.03272783858689974,
+          "accuracy_min": 0.7926779793202032,
+          "accuracy_max": 0.876482998980022,
+          "f1_score_mean": 0.7857254491474345,
+          "f1_score_std": 0.0403076659358097,
+          "f1_score_min": 0.7363683109190253,
+          "f1_score_max": 0.8280335835748679,
+          "auc_mean": 0.8473815056523533,
+          "auc_std": 0.025139937170870146,
+          "auc_min": 0.8106260032313117,
+          "auc_max": 0.8822371639143693
+        },
+        "GraphSAGE": {
+          "accuracy_mean": 0.8147210367054999,
+          "accuracy_std": 0.0259338471956355,
+          "accuracy_min": 0.7762501181477774,
+          "accuracy_max": 0.8567576211089394,
+          "f1_score_mean": 0.7638903122667935,
+          "f1_score_std": 0.024797701105760357,
+          "f1_score_min": 0.7372376956077987,
+          "f1_score_max": 0.8003213381424219,
+          "auc_mean": 0.8640859562023998,
+          "auc_std": 0.03235264259071709,
+          "auc_min": 0.8216064768944775,
+          "auc_max": 0.8988552706401656
+        }
+      }
+    },
+    "statistical_significance": {
+      "pbmc_10k": {
+        "accuracy_vs_GCN": 0.15382603265999673,
+        "accuracy_vs_GAT": 0.21411451893172218,
+        "accuracy_vs_GraphSAGE": 0.17444971968319822,
+        "f1_score_vs_GCN": 0.21854546507905837,
+        "f1_score_vs_GAT": 0.27242240247086613,
+        "f1_score_vs_GraphSAGE": 0.23455133867964983,
+        "auc_vs_GCN": 0.2069339103749801,
+        "auc_vs_GAT": 0.23523799256557254,
+        "auc_vs_GraphSAGE": 0.25184699370452646
+      },
+      "brain_atlas": {
+        "accuracy_vs_GCN": 0.21090075443730427,
+        "accuracy_vs_GAT": 0.1911895612211516,
+        "accuracy_vs_GraphSAGE": 0.16063524838900856,
+        "f1_score_vs_GCN": 0.17809881540596173,
+        "f1_score_vs_GAT": 0.23275293887912296,
+        "f1_score_vs_GraphSAGE": 0.24530008487757549,
+        "auc_vs_GCN": 0.1914994213332224,
+        "auc_vs_GAT": 0.23072887806130216,
+        "auc_vs_GraphSAGE": 0.2172821170611885
+      },
+      "immune_atlas": {
+        "accuracy_vs_GCN": 0.14870130720148578,
+        "accuracy_vs_GAT": 0.23658977789591584,
+        "accuracy_vs_GraphSAGE": 0.20944207341099985,
+        "f1_score_vs_GCN": 0.24329029151350334,
+        "f1_score_vs_GAT": 0.228250898294869,
+        "f1_score_vs_GraphSAGE": 0.18458062453358703,
+        "auc_vs_GCN": 0.19138060150643632,
+        "auc_vs_GAT": 0.2171630113047065,
+        "auc_vs_GraphSAGE": 0.2505719124047996
+      }
+    },
+    "runtime_analysis": {
+      "pbmc_10k": {
+        "training_time_seconds": 11.673953713045847,
+        "inference_time_ms": 0.6963536616674499,
+        "scaling_efficiency": 0.8748341486709754
+      },
+      "brain_atlas": {
+        "training_time_seconds": 75.83359632081796,
+        "inference_time_ms": 7.544938409311547,
+        "scaling_efficiency": 0.7520394568877667
+      },
+      "immune_atlas": {
+        "training_time_seconds": 40.78129454433345,
+        "inference_time_ms": 4.665466775074954,
+        "scaling_efficiency": 0.7699405889892533
+      }
+    },
+    "memory_usage": {
+      "pbmc_10k": {
+        "peak_memory_mb": 611.480170238257,
+        "memory_efficiency": 0.7583453913505706,
+        "gpu_memory_mb": 364.89531136159076
+      },
+      "brain_atlas": {
+        "peak_memory_mb": 1012.069146564692,
+        "memory_efficiency": 0.7567458526210173,
+        "gpu_memory_mb": 636.6092511695847
+      },
+      "immune_atlas": {
+        "peak_memory_mb": 773.6149648942453,
+        "memory_efficiency": 0.8244798757528261,
+        "gpu_memory_mb": 455.21821008469755
+      }
+    },
+    "reproducibility_scores": {
+      "pbmc_10k": {
+        "seed_consistency": 0.9796224947106682,
+        "cross_platform_consistency": 0.9188838434008108,
+        "version_stability": 0.9113341211844922,
+        "parameter_sensitivity": 0.9299336951831102
+      },
+      "brain_atlas": {
+        "seed_consistency": 0.929903311526014,
+        "cross_platform_consistency": 0.9677147034209252,
+        "version_stability": 0.9347303049581452,
+        "parameter_sensitivity": 0.9049662022456565
+      },
+      "immune_atlas": {
+        "seed_consistency": 0.9690158114161088,
+        "cross_platform_consistency": 0.9248296540276347,
+        "version_stability": 0.8874564826288713,
+        "parameter_sensitivity": 0.851678936245062
+      }
+    },
+    "timestamp": "2025-08-14T18:09:07.538775"
+  }
+}
