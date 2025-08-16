@@ -1,0 +1,8 @@
+{
+  "catalog": "<scgraph_hub.catalog.DatasetCatalog object at 0x7f2a4e30b050>",
+  "dataset": "<scgraph_hub.simple_dataset.SimpleSCGraphDataset object at 0x7f2a4d6f8860>",
+  "graph": "None",
+  "models": "None",
+  "validation": "{'catalog_integrity': True, 'dataset_structure': True, 'graph_construction': False, 'model_registry': False, 'error_handling': True}",
+  "error_handling": "True"
+}

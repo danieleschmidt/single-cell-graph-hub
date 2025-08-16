@@ -201,5 +201,162 @@
     },
     "alert_level": "high",
     "requires_action": false
+  },
+  {
+    "alert_id": "88c7d35c5459",
+    "timestamp": "2025-08-16T05:31:46.648545",
+    "event": {
+      "event_id": "2e176c6286d0607f",
+      "timestamp": "2025-08-16T05:31:46.648461",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "1b9e16590d11f970",
+      "resource": "research_data",
+      "action": "read",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "read_research_data",
+        "required_clearance": "internal"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "b309cbd28607",
+    "timestamp": "2025-08-16T05:31:46.649741",
+    "event": {
+      "event_id": "3140dc42bcf9750b",
+      "timestamp": "2025-08-16T05:31:46.649683",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "1b9e16590d11f970",
+      "resource": "system_config",
+      "action": "delete",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "delete_system_config",
+        "required_clearance": "top_secret"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "059f5fa1b234",
+    "timestamp": "2025-08-16T05:31:46.650684",
+    "event": {
+      "event_id": "1347b92c0344f04e",
+      "timestamp": "2025-08-16T05:31:46.650615",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "1b9e16590d11f970",
+      "resource": "user_accounts",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_permissions",
+        "operation": "admin_user_management",
+        "required_clearance": "top_secret"
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "6442848048a1",
+    "timestamp": "2025-08-16T05:31:46.651712",
+    "event": {
+      "event_id": "9b35b529899f4637",
+      "timestamp": "2025-08-16T05:31:46.651673",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 1
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "d4ea0405ee2f",
+    "timestamp": "2025-08-16T05:31:46.652515",
+    "event": {
+      "event_id": "aff953cec5c8bfba",
+      "timestamp": "2025-08-16T05:31:46.652448",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 2
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "50aaa5c13714",
+    "timestamp": "2025-08-16T05:31:46.653342",
+    "event": {
+      "event_id": "241e4dd5054bfd5e",
+      "timestamp": "2025-08-16T05:31:46.653275",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 3
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
+  },
+  {
+    "alert_id": "e56a29f05205",
+    "timestamp": "2025-08-16T05:31:46.654269",
+    "event": {
+      "event_id": "3630336b64871710",
+      "timestamp": "2025-08-16T05:31:46.654204",
+      "event_type": "access_denied",
+      "severity": "high",
+      "user_id": "dr_researcher",
+      "resource": "admin_panel",
+      "action": "admin",
+      "result": "denied",
+      "details": {
+        "reason": "insufficient_clearance",
+        "escalation_attempt": 4
+      },
+      "source_ip": null,
+      "user_agent": null
+    },
+    "alert_level": "high",
+    "requires_action": false
   }
 ]
