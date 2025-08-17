@@ -2,6 +2,40 @@
 
 __version__ = "0.1.0"
 
+# Generation 1 Enhancement: Essential imports for error handling
+import warnings
+import os
+import sys
+import logging
+from typing import Optional, Dict, Any
+
+# Generation 1: Configure basic logging
+def _setup_basic_logging():
+    """Setup basic logging configuration for Generation 1."""
+    logger = logging.getLogger(__name__)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
+
+# Initialize basic logger
+_logger = _setup_basic_logging()
+
+# Generation 1: Enhanced error handling wrapper
+def _safe_import_with_fallback(module_path: str, fallback_message: str = None):
+    """Safely import module with detailed error logging."""
+    try:
+        module = __import__(module_path, fromlist=[''])
+        _logger.info(f"Successfully imported {module_path}")
+        return module, None
+    except ImportError as e:
+        error_msg = fallback_message or f"Failed to import {module_path}: {str(e)}"
+        _logger.warning(error_msg)
+        return None, str(e)
+
 # Handle optional dependencies gracefully
 try:
     from .dataset import SCGraphDataset
@@ -20,6 +54,84 @@ from .catalog import DatasetCatalog, get_default_catalog
 # Simple dataset for basic functionality
 from .simple_dataset import SimpleSCGraphDataset, SimpleSCGraphData
 
+# Generation 1: Enhanced simple loader
+from .enhanced_simple_loader import (
+    EnhancedSimpleLoader, DatasetInfo, get_enhanced_loader, 
+    quick_load, list_datasets
+)
+
+# Generation 1: Basic models (always available)
+try:
+    from .basic_models import (
+        BaseModelInterface, DummyGNNModel, ModelConfig, ModelRegistry,
+        get_model_registry, create_model, list_available_models,
+        SimpleTrainer, quick_train
+    )
+    _BASIC_MODELS_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Basic models not available: {e}")
+    _BASIC_MODELS_AVAILABLE = False
+
+# Generation 2: Robust error handling and validation
+try:
+    from .robust_error_handling import (
+        ErrorSeverity, ErrorCategory, ErrorContext, RobustErrorHandler,
+        get_error_handler, robust_wrapper, DataValidator, get_validator,
+        InputSanitizer, get_sanitizer, validate_and_sanitize, HealthMonitor,
+        get_health_monitor
+    )
+    _ROBUST_ERROR_HANDLING_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Robust error handling not available: {e}")
+    _ROBUST_ERROR_HANDLING_AVAILABLE = False
+
+# Generation 2: Advanced monitoring
+try:
+    from .advanced_monitoring import (
+        PerformanceMetrics, MetricsCollector, AdvancedLogger, monitored_function,
+        SystemMonitor, get_metrics_collector, get_system_monitor, performance_context
+    )
+    _ADVANCED_MONITORING_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Advanced monitoring not available: {e}")
+    _ADVANCED_MONITORING_AVAILABLE = False
+
+# Generation 2: Security framework
+try:
+    from .security_framework import (
+        SecurityLevel, ThreatType, SecurityEvent, PathValidator, InputValidator,
+        AccessControl, DataEncryption, SecurityAuditor, SecureOperationManager,
+        get_security_manager, secure_operation
+    )
+    _SECURITY_FRAMEWORK_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Security framework not available: {e}")
+    _SECURITY_FRAMEWORK_AVAILABLE = False
+
+# Generation 3: Enhanced performance optimization
+try:
+    from .enhanced_performance import (
+        CacheEntry, AdvancedCache, cached, ConcurrentProcessor, ResourcePool,
+        PerformanceOptimizer, get_performance_optimizer, performance_optimized,
+        performance_monitor
+    )
+    _ENHANCED_PERFORMANCE_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Enhanced performance not available: {e}")
+    _ENHANCED_PERFORMANCE_AVAILABLE = False
+
+# Generation 3: Scalability framework
+try:
+    from .scalability_framework import (
+        LoadBalancingStrategy, ScalingEvent, WorkerNode, Task, LoadBalancer,
+        AutoScaler, DistributedTaskManager, get_distributed_task_manager,
+        distributed_task
+    )
+    _SCALABILITY_FRAMEWORK_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Scalability framework not available: {e}")
+    _SCALABILITY_FRAMEWORK_AVAILABLE = False
+
 # Advanced functionality with error handling
 try:
     from .advanced_dataset import DatasetProcessor, EnhancedSCGraphDataset
@@ -30,19 +142,25 @@ try:
 except ImportError:
     _ADVANCED_AVAILABLE = False
 
-# Generation 3: Scalability and Performance features
+# Legacy scalability features (keeping for backward compatibility)
 try:
     from .performance import (
-        PerformanceOptimizer, PerformanceCache, ConcurrentProcessor, ResourceOptimizer,
-        get_performance_optimizer, high_performance, auto_scale
+        PerformanceOptimizer as LegacyPerformanceOptimizer, 
+        PerformanceCache, ResourceOptimizer,
+        high_performance, auto_scale
     )
     from .scalability import (
-        DistributedTaskManager, LoadBalancer, AutoScaler, WorkerNode, Task,
-        get_distributed_task_manager, distributed_task
+        DistributedTaskManager as LegacyDistributedTaskManager, 
+        LoadBalancer as LegacyLoadBalancer, 
+        AutoScaler as LegacyAutoScaler, 
+        WorkerNode as LegacyWorkerNode, 
+        Task as LegacyTask,
+        get_distributed_task_manager as get_legacy_distributed_task_manager, 
+        distributed_task as legacy_distributed_task
     )
-    _SCALABILITY_AVAILABLE = True
+    _LEGACY_SCALABILITY_AVAILABLE = True
 except ImportError:
-    _SCALABILITY_AVAILABLE = False
+    _LEGACY_SCALABILITY_AVAILABLE = False
 
 # Utility functions
 from .utils import check_dependencies, validate_dataset_config
@@ -53,9 +171,65 @@ __all__ = [
     "get_default_catalog",
     "SimpleSCGraphDataset",
     "SimpleSCGraphData",
+    # Generation 1: Enhanced loader
+    "EnhancedSimpleLoader",
+    "DatasetInfo", 
+    "get_enhanced_loader",
+    "quick_load",
+    "list_datasets",
+    # Generation 1: Basic models
+    "BaseModelInterface",
+    "DummyGNNModel", 
+    "ModelConfig",
+    "ModelRegistry",
+    "get_model_registry",
+    "create_model",
+    "list_available_models",
+    "SimpleTrainer",
+    "quick_train",
     "check_dependencies", 
     "validate_dataset_config"
 ]
+
+# Add Generation 2: Robust error handling if available
+if _ROBUST_ERROR_HANDLING_AVAILABLE:
+    __all__.extend([
+        "ErrorSeverity", "ErrorCategory", "ErrorContext", "RobustErrorHandler",
+        "get_error_handler", "robust_wrapper", "DataValidator", "get_validator",
+        "InputSanitizer", "get_sanitizer", "validate_and_sanitize", "HealthMonitor",
+        "get_health_monitor"
+    ])
+
+# Add Generation 2: Advanced monitoring if available  
+if _ADVANCED_MONITORING_AVAILABLE:
+    __all__.extend([
+        "PerformanceMetrics", "MetricsCollector", "AdvancedLogger", "monitored_function",
+        "SystemMonitor", "get_metrics_collector", "get_system_monitor", "performance_context"
+    ])
+
+# Add Generation 2: Security framework if available
+if _SECURITY_FRAMEWORK_AVAILABLE:
+    __all__.extend([
+        "SecurityLevel", "ThreatType", "SecurityEvent", "PathValidator", "InputValidator",
+        "AccessControl", "DataEncryption", "SecurityAuditor", "SecureOperationManager", 
+        "get_security_manager", "secure_operation"
+    ])
+
+# Add Generation 3: Enhanced performance if available
+if _ENHANCED_PERFORMANCE_AVAILABLE:
+    __all__.extend([
+        "CacheEntry", "AdvancedCache", "cached", "ConcurrentProcessor", "ResourcePool",
+        "PerformanceOptimizer", "get_performance_optimizer", "performance_optimized",
+        "performance_monitor"
+    ])
+
+# Add Generation 3: Scalability framework if available
+if _SCALABILITY_FRAMEWORK_AVAILABLE:
+    __all__.extend([
+        "LoadBalancingStrategy", "ScalingEvent", "WorkerNode", "Task", "LoadBalancer",
+        "AutoScaler", "DistributedTaskManager", "get_distributed_task_manager",
+        "distributed_task"
+    ])
 
 # Add advanced functionality if available
 if _ADVANCED_AVAILABLE:
@@ -88,42 +262,22 @@ else:
     HealthStatus = _advanced_feature_unavailable
 
 # Add scalability features if available
-if _SCALABILITY_AVAILABLE:
+# Add legacy scalability features if available
+if _LEGACY_SCALABILITY_AVAILABLE:
     __all__.extend([
-        "PerformanceOptimizer",
+        "LegacyPerformanceOptimizer",
         "PerformanceCache", 
-        "ConcurrentProcessor",
         "ResourceOptimizer",
-        "get_performance_optimizer",
         "high_performance",
         "auto_scale",
-        "DistributedTaskManager",
-        "LoadBalancer",
-        "AutoScaler", 
-        "WorkerNode",
-        "Task",
-        "get_distributed_task_manager",
-        "distributed_task"
+        "LegacyDistributedTaskManager",
+        "LegacyLoadBalancer",
+        "LegacyAutoScaler", 
+        "LegacyWorkerNode",
+        "LegacyTask",
+        "get_legacy_distributed_task_manager",
+        "legacy_distributed_task"
     ])
-else:
-    # Provide placeholder functions for scalability features
-    def _scalability_feature_unavailable(*args, **kwargs):
-        raise ImportError("Scalability features require additional dependencies. Install with: pip install single-cell-graph-hub[scalability]")
-    
-    PerformanceOptimizer = _scalability_feature_unavailable
-    PerformanceCache = _scalability_feature_unavailable
-    ConcurrentProcessor = _scalability_feature_unavailable
-    ResourceOptimizer = _scalability_feature_unavailable
-    get_performance_optimizer = _scalability_feature_unavailable
-    high_performance = _scalability_feature_unavailable
-    auto_scale = _scalability_feature_unavailable
-    DistributedTaskManager = _scalability_feature_unavailable
-    LoadBalancer = _scalability_feature_unavailable
-    AutoScaler = _scalability_feature_unavailable
-    WorkerNode = _scalability_feature_unavailable
-    Task = _scalability_feature_unavailable
-    get_distributed_task_manager = _scalability_feature_unavailable
-    distributed_task = _scalability_feature_unavailable
 
 # Export core functionality if available
 if _CORE_AVAILABLE:
