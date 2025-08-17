@@ -1,0 +1,68 @@
+{
+  "overall_status": "warning",
+  "overall_score": 76.54695688967844,
+  "total_gates": 4,
+  "passed_gates": 2,
+  "failed_gates": 1,
+  "warning_gates": 1,
+  "execution_time": 0.12157964706420898,
+  "timestamp": 1755442445.393988,
+  "results": [
+    {
+      "gate_name": "Code Coverage",
+      "status": "failed",
+      "score": 30.76923076923077,
+      "threshold": 85.0,
+      "message": "Estimated coverage: 30.8% (based on test file ratio)",
+      "details": {
+        "source_files": 52,
+        "test_files": 16,
+        "estimated": true
+      },
+      "execution_time": 0.03183698654174805
+    },
+    {
+      "gate_name": "Security Scan",
+      "status": "warning",
+      "score": 76.92307692307692,
+      "threshold": 95.0,
+      "message": "Basic security check: 12/52 files with potential issues",
+      "details": {
+        "total_files": 52,
+        "files_with_issues": 12,
+        "check_type": "basic_pattern_check"
+      },
+      "execution_time": 0.04519820213317871
+    },
+    {
+      "gate_name": "Performance Benchmarks",
+      "status": "passed",
+      "score": 98.63636493682861,
+      "threshold": 80.0,
+      "message": "Performance: load=0.002s, cache=0.000s",
+      "details": {
+        "dataset_load_time": 0.002341032028198242,
+        "cache_operation_time": 3.8623809814453125e-05,
+        "load_score": 97.65896797180176,
+        "cache_score": 99.61376190185547,
+        "dataset_nodes": 100
+      },
+      "execution_time": 0.0024819374084472656
+    },
+    {
+      "gate_name": "Documentation",
+      "status": "passed",
+      "score": 99.85915492957747,
+      "threshold": 70.0,
+      "message": "Documentation: 99.9% complete",
+      "details": {
+        "readme": true,
+        "docstring_coverage": 99.76525821596243,
+        "total_functions": 426,
+        "documented_functions": 425,
+        "doc_files": 13
+      },
+      "execution_time": 0.04091215133666992
+    }
+  ]
+}
