@@ -1,0 +1,513 @@
+{
+  "current_level": "basic",
+  "execution_history": [
+    {
+      "timestamp": "2025-08-23T00:43:45.701782",
+      "overall_status": "failed",
+      "overall_score": 54.03286635162044,
+      "execution_time": 0.2020549774169922,
+      "gates_executed": 2,
+      "gates_passed": 1,
+      "gates_failed": 1,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 47.27051525577645,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 60.795217447464424,
+          "threshold": 56.0,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:43:45.904749",
+      "overall_status": "passed",
+      "overall_score": 54.15759685550573,
+      "execution_time": 0.20202970504760742,
+      "gates_executed": 2,
+      "gates_passed": 2,
+      "gates_failed": 0,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "passed",
+          "score": 50.05935254113987,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 58.25584116987159,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:43:46.107881",
+      "overall_status": "failed",
+      "overall_score": 44.53327771495667,
+      "execution_time": 0.20206546783447266,
+      "gates_executed": 2,
+      "gates_passed": 0,
+      "gates_failed": 2,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 41.93974145847848,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "failed",
+          "score": 47.126813971434856,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:43:46.311651",
+      "overall_status": "failed",
+      "overall_score": 50.42433996907907,
+      "execution_time": 0.20193171501159668,
+      "gates_executed": 2,
+      "gates_passed": 0,
+      "gates_failed": 2,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 48.25497319107412,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "failed",
+          "score": 52.59370674708401,
+          "threshold": 56.0,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:43:46.515274",
+      "overall_status": "failed",
+      "overall_score": 50.73974135990669,
+      "execution_time": 0.2022087574005127,
+      "gates_executed": 2,
+      "gates_passed": 1,
+      "gates_failed": 1,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 40.74141339339419,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 60.73806932641918,
+          "threshold": 56.0,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:51:40.612350",
+      "overall_status": "failed",
+      "overall_score": 53.248268192375036,
+      "execution_time": 0.20256352424621582,
+      "gates_executed": 2,
+      "gates_passed": 1,
+      "gates_failed": 1,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 46.05712447320505,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 60.43941191154503,
+          "threshold": 56.0,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:51:40.816129",
+      "overall_status": "passed",
+      "overall_score": 55.41064245724945,
+      "execution_time": 0.20229315757751465,
+      "gates_executed": 2,
+      "gates_passed": 2,
+      "gates_failed": 0,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "passed",
+          "score": 51.78652888486448,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 59.03475602963442,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:51:41.120964",
+      "overall_status": "failed",
+      "overall_score": 57.961136855504314,
+      "execution_time": 0.30292344093322754,
+      "gates_executed": 3,
+      "gates_passed": 1,
+      "gates_failed": 2,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 45.01622226560786,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "failed",
+          "score": 53.907081467020404,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "security_analysis": {
+          "gate_name": "security_analysis",
+          "status": "passed",
+          "score": 74.96010683388468,
+          "threshold": 68.0,
+          "message": "Mock execution for security_analysis",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:51:41.325036",
+      "overall_status": "passed",
+      "overall_score": 57.397180117047185,
+      "execution_time": 0.20203256607055664,
+      "gates_executed": 2,
+      "gates_passed": 2,
+      "gates_failed": 0,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "passed",
+          "score": 55.07933437035645,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "passed",
+          "score": 59.715025863737914,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-23T00:51:41.528899",
+      "overall_status": "failed",
+      "overall_score": 45.30648635613136,
+      "execution_time": 0.20171093940734863,
+      "gates_executed": 2,
+      "gates_passed": 0,
+      "gates_failed": 2,
+      "gates_warning": 0,
+      "active_level": "basic",
+      "gates": {
+        "test_coverage": {
+          "gate_name": "test_coverage",
+          "status": "failed",
+          "score": 43.395386734750055,
+          "threshold": 49.0,
+          "message": "Mock execution for test_coverage",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        },
+        "code_quality": {
+          "gate_name": "code_quality",
+          "status": "failed",
+          "score": 47.21758597751267,
+          "threshold": 56.1,
+          "message": "Mock execution for code_quality",
+          "details": {
+            "mock": true
+          },
+          "execution_time": 0.0
+        }
+      }
+    }
+  ],
+  "gates": {
+    "code_quality": {
+      "gate_type": "code_quality",
+      "level": "basic",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [],
+      "evolution_criteria": {
+        "consistent_passes": 5,
+        "complexity_threshold": 10,
+        "test_coverage_requirement": 80
+      },
+      "threshold": {
+        "base_value": 80.0,
+        "current_level": "basic",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": [
+          60.795217447464424,
+          58.25584116987159,
+          47.126813971434856,
+          52.59370674708401,
+          60.73806932641918,
+          60.43941191154503,
+          59.03475602963442,
+          53.907081467020404,
+          59.715025863737914,
+          47.21758597751267
+        ]
+      }
+    },
+    "test_coverage": {
+      "gate_type": "test_coverage",
+      "level": "basic",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [],
+      "evolution_criteria": {
+        "consistent_passes": 3,
+        "test_sophistication": 5
+      },
+      "threshold": {
+        "base_value": 70.0,
+        "current_level": "basic",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": [
+          47.27051525577645,
+          50.05935254113987,
+          41.93974145847848,
+          48.25497319107412,
+          40.74141339339419,
+          46.05712447320505,
+          51.78652888486448,
+          45.01622226560786,
+          55.07933437035645,
+          43.395386734750055
+        ]
+      }
+    },
+    "security_analysis": {
+      "gate_type": "security_analysis",
+      "level": "intermediate",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [
+        "code_quality"
+      ],
+      "evolution_criteria": {
+        "zero_critical_vulnerabilities": 10,
+        "security_score_consistency": 90
+      },
+      "threshold": {
+        "base_value": 85.0,
+        "current_level": "intermediate",
+        "target_value": 98.0,
+        "adaptation_rate": 0.1,
+        "history": [
+          74.96010683388468
+        ]
+      }
+    },
+    "performance_benchmarks": {
+      "gate_type": "performance_benchmarks",
+      "level": "advanced",
+      "enabled": true,
+      "weight": 1.5,
+      "dependencies": [
+        "code_quality",
+        "test_coverage"
+      ],
+      "evolution_criteria": {
+        "performance_improvement_trend": 5,
+        "optimization_score": 85
+      },
+      "threshold": {
+        "base_value": 75.0,
+        "current_level": "advanced",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "ai_validation": {
+      "gate_type": "ai_validation",
+      "level": "expert",
+      "enabled": true,
+      "weight": 2.0,
+      "dependencies": [
+        "code_quality",
+        "test_coverage",
+        "security_analysis"
+      ],
+      "evolution_criteria": {
+        "ai_score_consistency": 90,
+        "innovative_solutions": 3
+      },
+      "threshold": {
+        "base_value": 88.0,
+        "current_level": "expert",
+        "target_value": 97.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "quantum_resistance": {
+      "gate_type": "quantum_resistance",
+      "level": "autonomous",
+      "enabled": true,
+      "weight": 3.0,
+      "dependencies": [
+        "security_analysis",
+        "ai_validation"
+      ],
+      "evolution_criteria": {
+        "quantum_readiness_score": 95,
+        "cryptographic_strength": 98
+      },
+      "threshold": {
+        "base_value": 92.0,
+        "current_level": "autonomous",
+        "target_value": 99.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    }
+  }
+}

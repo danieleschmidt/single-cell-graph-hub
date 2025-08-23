@@ -1,0 +1,127 @@
+{
+  "current_level": "basic",
+  "execution_history": [],
+  "gates": {
+    "code_quality": {
+      "gate_type": "code_quality",
+      "level": "basic",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [],
+      "evolution_criteria": {
+        "consistent_passes": 5,
+        "complexity_threshold": 10,
+        "test_coverage_requirement": 80
+      },
+      "threshold": {
+        "base_value": 80.0,
+        "current_level": "basic",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "test_coverage": {
+      "gate_type": "test_coverage",
+      "level": "basic",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [],
+      "evolution_criteria": {
+        "consistent_passes": 3,
+        "test_sophistication": 5
+      },
+      "threshold": {
+        "base_value": 70.0,
+        "current_level": "basic",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "security_analysis": {
+      "gate_type": "security_analysis",
+      "level": "intermediate",
+      "enabled": true,
+      "weight": 1.0,
+      "dependencies": [
+        "code_quality"
+      ],
+      "evolution_criteria": {
+        "zero_critical_vulnerabilities": 10,
+        "security_score_consistency": 90
+      },
+      "threshold": {
+        "base_value": 85.0,
+        "current_level": "intermediate",
+        "target_value": 98.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "performance_benchmarks": {
+      "gate_type": "performance_benchmarks",
+      "level": "advanced",
+      "enabled": true,
+      "weight": 1.5,
+      "dependencies": [
+        "code_quality",
+        "test_coverage"
+      ],
+      "evolution_criteria": {
+        "performance_improvement_trend": 5,
+        "optimization_score": 85
+      },
+      "threshold": {
+        "base_value": 75.0,
+        "current_level": "advanced",
+        "target_value": 95.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "ai_validation": {
+      "gate_type": "ai_validation",
+      "level": "expert",
+      "enabled": true,
+      "weight": 2.0,
+      "dependencies": [
+        "code_quality",
+        "test_coverage",
+        "security_analysis"
+      ],
+      "evolution_criteria": {
+        "ai_score_consistency": 90,
+        "innovative_solutions": 3
+      },
+      "threshold": {
+        "base_value": 88.0,
+        "current_level": "expert",
+        "target_value": 97.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    },
+    "quantum_resistance": {
+      "gate_type": "quantum_resistance",
+      "level": "autonomous",
+      "enabled": true,
+      "weight": 3.0,
+      "dependencies": [
+        "security_analysis",
+        "ai_validation"
+      ],
+      "evolution_criteria": {
+        "quantum_readiness_score": 95,
+        "cryptographic_strength": 98
+      },
+      "threshold": {
+        "base_value": 92.0,
+        "current_level": "autonomous",
+        "target_value": 99.0,
+        "adaptation_rate": 0.1,
+        "history": []
+      }
+    }
+  }
+}

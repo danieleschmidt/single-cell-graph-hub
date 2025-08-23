@@ -132,6 +132,25 @@ except ImportError as e:
     _logger.warning(f"Scalability framework not available: {e}")
     _SCALABILITY_FRAMEWORK_AVAILABLE = False
 
+# TERRAGON SDLC v6.0 Progressive Enhancements
+try:
+    from .progressive_quality_gates import (
+        ProgressiveQualityGateSystem, ProgressiveLevel, run_progressive_gates,
+        get_progressive_gates_system
+    )
+    from .progressive_resilience import (
+        ProgressiveResilienceOrchestrator, get_progressive_resilience,
+        resilient_execution, resilient
+    )
+    from .progressive_scalability import (
+        ProgressiveDistributedProcessor, get_progressive_processor,
+        distributed_execute, distributed_task
+    )
+    _PROGRESSIVE_ENHANCEMENTS_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Progressive enhancements not available: {e}")
+    _PROGRESSIVE_ENHANCEMENTS_AVAILABLE = False
+
 # Advanced functionality with error handling
 try:
     from .advanced_dataset import DatasetProcessor, EnhancedSCGraphDataset
@@ -229,6 +248,20 @@ if _SCALABILITY_FRAMEWORK_AVAILABLE:
         "LoadBalancingStrategy", "ScalingEvent", "WorkerNode", "Task", "LoadBalancer",
         "AutoScaler", "DistributedTaskManager", "get_distributed_task_manager",
         "distributed_task"
+    ])
+
+# Add TERRAGON SDLC v6.0 Progressive Enhancements if available
+if _PROGRESSIVE_ENHANCEMENTS_AVAILABLE:
+    __all__.extend([
+        # Progressive Quality Gates
+        "ProgressiveQualityGateSystem", "ProgressiveLevel", "run_progressive_gates",
+        "get_progressive_gates_system",
+        # Progressive Resilience
+        "ProgressiveResilienceOrchestrator", "get_progressive_resilience",
+        "resilient_execution", "resilient",
+        # Progressive Scalability
+        "ProgressiveDistributedProcessor", "get_progressive_processor",
+        "distributed_execute", "distributed_task"
     ])
 
 # Add advanced functionality if available
@@ -367,5 +400,34 @@ def simple_quick_start(dataset_name: str = "pbmc_10k", root: str = "./data", **k
     return SimpleSCGraphDataset(name=dataset_name, root=root, **kwargs)
 
 
+# Progressive SDLC Quick Start
+def progressive_quick_start(level: str = "basic", **kwargs):
+    """Quick start function for TERRAGON SDLC v6.0 progressive enhancements.
+    
+    Args:
+        level: Progressive level (basic, intermediate, advanced, expert, autonomous)
+        **kwargs: Additional configuration
+        
+    Returns:
+        Tuple of (quality_gates, resilience, scalability) systems
+    """
+    if not _PROGRESSIVE_ENHANCEMENTS_AVAILABLE:
+        raise ImportError("Progressive enhancements require installation")
+    
+    quality_gates = get_progressive_gates_system()
+    resilience = get_progressive_resilience()
+    scalability = get_progressive_processor()
+    
+    # Set level if provided
+    if level != "basic":
+        from .progressive_quality_gates import ProgressiveLevel
+        prog_level = ProgressiveLevel(level)
+        quality_gates.current_level = prog_level
+        resilience.level = prog_level
+        scalability.level = prog_level
+    
+    return quality_gates, resilience, scalability
+
+
 # Add to exports
-__all__.extend(["quick_start", "simple_quick_start"])
+__all__.extend(["quick_start", "simple_quick_start", "progressive_quick_start"])
