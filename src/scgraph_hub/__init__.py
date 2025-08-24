@@ -151,6 +151,38 @@ except ImportError as e:
     _logger.warning(f"Progressive enhancements not available: {e}")
     _PROGRESSIVE_ENHANCEMENTS_AVAILABLE = False
 
+# TERRAGON SDLC v6.0 Generation 1-3 Autonomous Systems
+try:
+    from .autonomous_enhanced import (
+        EnhancedAutonomousEngine, IntelligenceLevel, ExecutionStrategy, LearningMode,
+        TaskComplexity, AdvancedTaskMetrics, get_enhanced_autonomous_engine,
+        enhanced_autonomous_task, quantum_optimized
+    )
+    _AUTONOMOUS_ENHANCED_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Autonomous enhanced engine not available: {e}")
+    _AUTONOMOUS_ENHANCED_AVAILABLE = False
+
+try:
+    from .intelligent_fault_tolerance import (
+        IntelligentFaultToleranceSystem, FaultSeverity, RecoveryStrategy, FaultEvent,
+        get_fault_tolerance_system, fault_tolerant
+    )
+    _FAULT_TOLERANCE_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Intelligent fault tolerance not available: {e}")
+    _FAULT_TOLERANCE_AVAILABLE = False
+
+try:
+    from .hyperscale_edge import (
+        HyperScaleEdgeSystem, EdgeNode, DistributedTask, IntelligentLoadBalancer,
+        get_edge_system, edge_optimized, distributed_edge_task
+    )
+    _HYPERSCALE_EDGE_AVAILABLE = True
+except ImportError as e:
+    _logger.warning(f"Hyperscale edge system not available: {e}")
+    _HYPERSCALE_EDGE_AVAILABLE = False
+
 # Advanced functionality with error handling
 try:
     from .advanced_dataset import DatasetProcessor, EnhancedSCGraphDataset
@@ -262,6 +294,26 @@ if _PROGRESSIVE_ENHANCEMENTS_AVAILABLE:
         # Progressive Scalability
         "ProgressiveDistributedProcessor", "get_progressive_processor",
         "distributed_execute", "distributed_task"
+    ])
+
+# Add TERRAGON SDLC v6.0 Generation 1-3 Autonomous Systems if available
+if _AUTONOMOUS_ENHANCED_AVAILABLE:
+    __all__.extend([
+        "EnhancedAutonomousEngine", "IntelligenceLevel", "ExecutionStrategy", "LearningMode",
+        "TaskComplexity", "AdvancedTaskMetrics", "get_enhanced_autonomous_engine",
+        "enhanced_autonomous_task", "quantum_optimized"
+    ])
+
+if _FAULT_TOLERANCE_AVAILABLE:
+    __all__.extend([
+        "IntelligentFaultToleranceSystem", "FaultSeverity", "RecoveryStrategy", "FaultEvent",
+        "get_fault_tolerance_system", "fault_tolerant"
+    ])
+
+if _HYPERSCALE_EDGE_AVAILABLE:
+    __all__.extend([
+        "HyperScaleEdgeSystem", "EdgeNode", "DistributedTask", "IntelligentLoadBalancer",
+        "get_edge_system", "edge_optimized", "distributed_edge_task"
     ])
 
 # Add advanced functionality if available
@@ -397,7 +449,29 @@ def simple_quick_start(dataset_name: str = "pbmc_10k", root: str = "./data", **k
     Returns:
         SimpleSCGraphDataset instance
     """
-    return SimpleSCGraphDataset(name=dataset_name, root=root, **kwargs)
+    # Enhanced security: Validate and sanitize inputs
+    if _SECURITY_FRAMEWORK_AVAILABLE:
+        from .security_framework import get_security_manager
+        
+        security_manager = get_security_manager()
+        
+        # Validate dataset name for security
+        if not security_manager.validate_operation("dataset_access", dataset_name):
+            _logger.warning(f"Security validation failed for dataset: {dataset_name}")
+            dataset_name = "default_secure_dataset"
+    
+    # Additional input sanitization
+    import re
+    safe_dataset_name = re.sub(r'[^\w\-_]', '_', dataset_name)
+    safe_dataset_name = safe_dataset_name[:50]  # Limit length
+    
+    # Ensure root path is safe
+    import os
+    safe_root = os.path.abspath(root)
+    if not safe_root.startswith(os.path.abspath(".")):
+        safe_root = "./data"
+    
+    return SimpleSCGraphDataset(name=safe_dataset_name, root=safe_root, **kwargs)
 
 
 # Progressive SDLC Quick Start

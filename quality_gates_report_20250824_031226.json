@@ -1,0 +1,306 @@
+{
+  "metadata": {
+    "timestamp": "2025-08-24T03:12:26.271795",
+    "overall_score": 75.400845413208,
+    "production_ready": false
+  },
+  "quality_standards": {
+    "functionality": 85.0,
+    "reliability": 90.0,
+    "performance": 80.0,
+    "security": 95.0,
+    "maintainability": 75.0,
+    "portability": 70.0,
+    "usability": 80.0,
+    "scalability": 85.0
+  },
+  "gate_results": {
+    "functionality": {
+      "name": "functionality",
+      "passed": false,
+      "score": 35.0,
+      "threshold": 85.0,
+      "details": {
+        "tests_run": 5,
+        "tests_passed": 2,
+        "test_details": [
+          [
+            "core_imports",
+            false,
+            0.0,
+            "cannot import name 'get_enhanced_autonomous_engine' from 'scgraph_hub' (/root/repo/src/scgraph_hub/__init__.py)"
+          ],
+          [
+            "dataset_operations",
+            true,
+            90.0
+          ],
+          [
+            "dataset_creation",
+            true,
+            85.0
+          ],
+          [
+            "autonomous_engine",
+            false,
+            0.0,
+            "cannot access local variable 'get_enhanced_autonomous_engine' where it is not associated with a value"
+          ],
+          [
+            "fault_tolerance",
+            false,
+            0.0,
+            "cannot access local variable 'get_fault_tolerance_system' where it is not associated with a value"
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:25.811706"
+    },
+    "reliability": {
+      "name": "reliability",
+      "passed": true,
+      "score": 90.0,
+      "threshold": 90.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 4,
+        "reliability_metrics": [
+          [
+            "error_handling",
+            true,
+            95.0
+          ],
+          [
+            "stability_under_load",
+            true,
+            100.0
+          ],
+          [
+            "resource_cleanup",
+            true,
+            85.0
+          ],
+          [
+            "graceful_degradation",
+            true,
+            80.0
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.234879"
+    },
+    "performance": {
+      "name": "performance",
+      "passed": true,
+      "score": 98.20676330566405,
+      "threshold": 80.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 4,
+        "performance_metrics": [
+          [
+            "import_performance",
+            true,
+            99.98822212219238,
+            "0.1ms"
+          ],
+          [
+            "dataset_creation_performance",
+            true,
+            99.96767044067383,
+            "0.3ms"
+          ],
+          [
+            "memory_efficiency",
+            true,
+            98.16,
+            "18400 bytes"
+          ],
+          [
+            "concurrent_operations",
+            true,
+            94.71116065979004,
+            "10.6ms"
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.246200"
+    },
+    "security": {
+      "name": "security",
+      "passed": false,
+      "score": 92.5,
+      "threshold": 95.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 4,
+        "security_checks": [
+          [
+            "input_validation",
+            true,
+            100.0
+          ],
+          [
+            "path_traversal_protection",
+            true,
+            90.0
+          ],
+          [
+            "error_information_disclosure",
+            true,
+            95.0
+          ],
+          [
+            "safe_defaults",
+            true,
+            85.0
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.251588"
+    },
+    "maintainability": {
+      "name": "maintainability",
+      "passed": true,
+      "score": 95.0,
+      "threshold": 75.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 4,
+        "maintainability_metrics": [
+          [
+            "code_organization",
+            true,
+            100,
+            "64 files"
+          ],
+          [
+            "documentation_presence",
+            true,
+            100
+          ],
+          [
+            "configuration_management",
+            true,
+            100
+          ],
+          [
+            "error_handling_patterns",
+            true,
+            80.0
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.252638"
+    },
+    "portability": {
+      "name": "portability",
+      "passed": true,
+      "score": 87.5,
+      "threshold": 70.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 4,
+        "portability_checks": [
+          [
+            "python_version_compatibility",
+            true,
+            100.0,
+            "Python 3.12"
+          ],
+          [
+            "cross_platform_paths",
+            true,
+            90.0
+          ],
+          [
+            "dependency_management",
+            true,
+            85.0
+          ],
+          [
+            "platform_detection",
+            true,
+            75.0,
+            {
+              "system": "Linux",
+              "machine": "x86_64",
+              "python_implementation": "CPython"
+            }
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.257741"
+    },
+    "usability": {
+      "name": "usability",
+      "passed": false,
+      "score": 63.75,
+      "threshold": 80.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 3,
+        "usability_metrics": [
+          [
+            "api_simplicity",
+            true,
+            95.0
+          ],
+          [
+            "clear_error_messages",
+            true,
+            85.0
+          ],
+          [
+            "sensible_defaults",
+            false,
+            0.0,
+            "SimpleSCGraphDataset.__init__() missing 1 required positional argument: 'name'"
+          ],
+          [
+            "help_availability",
+            true,
+            75.0
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.258411"
+    },
+    "scalability": {
+      "name": "scalability",
+      "passed": false,
+      "score": 41.25,
+      "threshold": 85.0,
+      "details": {
+        "tests_run": 4,
+        "tests_passed": 2,
+        "scalability_tests": [
+          [
+            "concurrent_operations",
+            false,
+            0.0,
+            "0.001s"
+          ],
+          [
+            "memory_scaling",
+            true,
+            85.0,
+            "5 datasets"
+          ],
+          [
+            "batch_processing",
+            false,
+            0.0,
+            "cannot import name 'get_enhanced_autonomous_engine' from 'scgraph_hub' (/root/repo/src/scgraph_hub/__init__.py)"
+          ],
+          [
+            "resource_efficiency",
+            true,
+            80.0
+          ]
+        ]
+      },
+      "timestamp": "2025-08-24T03:12:26.271269"
+    }
+  }
+}
