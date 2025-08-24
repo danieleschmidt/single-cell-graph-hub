@@ -58,7 +58,7 @@ class PathValidator:
     
     def __init__(self, allowed_roots: List[str], allowed_extensions: Optional[Set[str]] = None):
         self.allowed_roots = [Path(root).resolve() for root in allowed_roots]
-        self.allowed_extensions = allowed_extensions or {'.json', '.h5', '.h5ad', '.csv', '.txt'}
+        self.allowed_extensions = allowed_extensions or {'.json', '.h5', '.h5ad', '.csv', '.txt', '.dat'}
         
     def validate_path(self, path: Union[str, Path]) -> bool:
         """Validate if path is safe to access."""
@@ -81,17 +81,25 @@ class PathValidator:
             return False
     
     def sanitize_filename(self, filename: str) -> str:
-        """Sanitize filename for safe usage."""
-        # Remove path separators and special characters
+        """Sanitize filename for safe usage with enhanced security."""
+        # Remove path separators and special characters (more restrictive)
         safe_chars = re.sub(r'[^\w\-_\.]', '', filename)
         
         # Remove leading dots and limit length
         safe_chars = safe_chars.lstrip('.').strip()
-        safe_chars = safe_chars[:255]  # Limit filename length
+        safe_chars = safe_chars[:200]  # More restrictive length limit
         
-        # Ensure it's not empty
-        if not safe_chars:
-            safe_chars = f"safe_file_{secrets.token_hex(8)}"
+        # Additional security checks
+        dangerous_names = {'con', 'prn', 'aux', 'nul', 'com1', 'com2', 'com3', 'com4', 
+                          'com5', 'com6', 'com7', 'com8', 'com9', 'lpt1', 'lpt2', 'lpt3', 
+                          'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'}
+        
+        if safe_chars.lower().split('.')[0] in dangerous_names:
+            safe_chars = f"safe_{safe_chars}"
+        
+        # Ensure it's not empty and has valid extension
+        if not safe_chars or safe_chars == '.' or safe_chars.startswith('..'):
+            safe_chars = f"secure_file_{secrets.token_hex(8)}.dat"
         
         return safe_chars
 
@@ -100,11 +108,13 @@ class InputValidator:
     """Comprehensive input validation for security."""
     
     def __init__(self):
-        # Patterns for potential security threats
+        # Enhanced patterns for potential security threats
         self.sql_injection_patterns = [
-            r"(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b|\bUNION\b)",
-            r"(--|\#|\/\*|\*\/)",
+            r"(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b|\bUNION\b|\bALTER\b|\bCREATE\b)",
+            r"(--|\#|\/\*|\*\/|;)",
             r"(\bOR\b|\bAND\b).*[=<>]",
+            r"(\bEXEC\b|\bEXECUTE\b)",
+            r"(\bSYS\b|\bINFORMATION_SCHEMA\b)",
         ]
         
         self.script_injection_patterns = [
@@ -114,6 +124,11 @@ class InputValidator:
             r"eval\s*\(",
             r"document\.",
             r"window\.",
+            r"<iframe",
+            r"<object",
+            r"<embed",
+            r"data:text/html",
+            r"vbscript:",
         ]
         
         self.path_traversal_patterns = [
@@ -123,6 +138,19 @@ class InputValidator:
             r"\%2e\%2e[\\/]",
             r"\%2f",
             r"\%5c",
+            r"\.\.\\x2f",
+            r"\.\.\\x5c",
+            r"file://",
+            r"\\\\",
+        ]
+        
+        # Additional command injection patterns  
+        self.command_injection_patterns = [
+            r"[;&|`$]",
+            r"^\s*\w+\s*=",
+            r"(\bcat\b|\bls\b|\brm\b|\bcp\b|\bmv\b)",
+            r"(\bcurl\b|\bwget\b|\bpython\b|\bnode\b)",
+            r"(\bsudo\b|\bsu\b|\bchmod\b|\bchown\b)",
         ]
         
     def validate_string_input(self, value: str, max_length: int = 1000) -> bool:
@@ -145,6 +173,11 @@ class InputValidator:
         
         # Check for path traversal patterns
         for pattern in self.path_traversal_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                return False
+        
+        # Check for command injection patterns
+        for pattern in self.command_injection_patterns:
             if re.search(pattern, value, re.IGNORECASE):
                 return False
         
@@ -396,12 +429,22 @@ class SecureOperationManager:
     def validate_operation(self, operation: str, data: Any, 
                          identifier: str = "unknown") -> bool:
         """Validate if operation is secure."""
-        # Check rate limits
+        # Enhanced security: Check rate limits with stricter defaults
         if not self.access_control.check_rate_limit(identifier):
             self.auditor.create_threat_event(
                 ThreatType.UNAUTHORIZED_ACCESS,
                 f"Rate limit exceeded for {identifier}",
                 SecurityLevel.HIGH,
+                user_id=identifier
+            )
+            return False
+            
+        # Additional security: Check for suspicious operations
+        if operation in ['exec', 'eval', 'import', '__import__']:
+            self.auditor.create_threat_event(
+                ThreatType.MALICIOUS_INPUT,
+                f"Potentially dangerous operation blocked: {operation}",
+                SecurityLevel.CRITICAL,
                 user_id=identifier
             )
             return False
@@ -461,7 +504,8 @@ def get_security_manager(allowed_paths: Optional[List[str]] = None) -> SecureOpe
     global _global_security_manager
     
     if _global_security_manager is None:
-        default_paths = ['./data', './logs', './cache', './models']
+        # Enhanced security: More restrictive default paths
+        default_paths = ['./data', './output']
         _global_security_manager = SecureOperationManager(allowed_paths or default_paths)
     
     return _global_security_manager

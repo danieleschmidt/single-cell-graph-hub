@@ -1,949 +1,745 @@
-"""Hyper-Scale Edge Computing System with Quantum-Enhanced Optimization."""
+"""Hyper-Scale Edge Computing System - Generation 3 Scalability.
+
+Advanced edge computing with intelligent load balancing,
+distributed processing, and quantum-inspired optimization.
+"""
 
 import asyncio
 import logging
 import time
-import hashlib
-import secrets
+import json
+import random
+import concurrent.futures
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union, Set
+from typing import Dict, List, Optional, Any, Callable, Tuple
 from pathlib import Path
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import defaultdict, deque
-import json
-import numpy as np
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import aiohttp
-import socket
-from urllib.parse import urlparse
+import uuid
+from collections import defaultdict, deque
+# Optional statistics import
+try:
+    import statistics
+    _HAS_STATISTICS = True
+except ImportError:
+    _HAS_STATISTICS = False
+    # Simple fallback for mean calculation
+    def _mean(values):
+        return sum(values) / len(values) if values else 0
+    
+    class statistics:
+        mean = staticmethod(_mean)
 
-from .logging_config import get_logger
-from .quantum_resilient import QuantumResilientReliabilitySystem
 
-
-class EdgeNodeType(Enum):
-    """Types of edge computing nodes."""
-    MICRO_EDGE = "micro_edge"        # IoT devices, smartphones
-    MINI_EDGE = "mini_edge"          # Small servers, gateways
-    REGIONAL_EDGE = "regional_edge"  # Data center edge
-    QUANTUM_EDGE = "quantum_edge"    # Quantum-enhanced edge
-    HYBRID_EDGE = "hybrid_edge"      # Multi-capability edge
+class EdgeNodeState(Enum):
+    """States of edge computing nodes."""
+    ACTIVE = "active"
+    STANDBY = "standby"
+    OVERLOADED = "overloaded"
+    OFFLINE = "offline"
+    MAINTENANCE = "maintenance"
 
 
 class LoadBalancingStrategy(Enum):
-    """Load balancing strategies for edge computing."""
+    """Load balancing strategies."""
     ROUND_ROBIN = "round_robin"
-    LEAST_CONNECTIONS = "least_connections"
     WEIGHTED_ROUND_ROBIN = "weighted_round_robin"
-    GEOGRAPHIC_PROXIMITY = "geographic_proximity"
-    LATENCY_OPTIMIZED = "latency_optimized"
-    QUANTUM_ANNEALING = "quantum_annealing"
-    AI_PREDICTIVE = "ai_predictive"
+    LEAST_CONNECTIONS = "least_connections"
+    RESOURCE_AWARE = "resource_aware"
+    LATENCY_BASED = "latency_based"
+    QUANTUM_OPTIMIZED = "quantum_optimized"
 
 
-class ScalingTrigger(Enum):
-    """Triggers for auto-scaling operations."""
-    CPU_UTILIZATION = "cpu_utilization"
-    MEMORY_PRESSURE = "memory_pressure"
-    NETWORK_LATENCY = "network_latency"
-    REQUEST_QUEUE_LENGTH = "request_queue_length"
-    PREDICTION_MODEL = "prediction_model"
-    QUANTUM_OPTIMIZATION = "quantum_optimization"
+class TaskPriority(Enum):
+    """Task priority levels."""
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+    REAL_TIME = 5
 
 
 @dataclass
 class EdgeNode:
     """Represents an edge computing node."""
-    node_id: str = field(default_factory=lambda: secrets.token_hex(8))
-    node_type: EdgeNodeType = EdgeNodeType.REGIONAL_EDGE
-    location: Dict[str, float] = field(default_factory=dict)  # lat, lon
-    capabilities: Dict[str, Any] = field(default_factory=dict)
-    current_load: float = 0.0
-    max_capacity: int = 1000  # requests per second
-    latency_to_center: float = 0.0  # milliseconds
-    quantum_enabled: bool = False
-    health_score: float = 100.0
+    node_id: str
+    region: str
+    state: EdgeNodeState = EdgeNodeState.STANDBY
+    cpu_cores: int = 8
+    memory_gb: int = 32
+    storage_gb: int = 500
+    network_bandwidth_mbps: int = 1000
+    
+    # Current utilization
+    cpu_utilization: float = 0.0
+    memory_utilization: float = 0.0
+    storage_utilization: float = 0.0
+    network_utilization: float = 0.0
+    
+    # Performance metrics
+    active_tasks: int = 0
+    completed_tasks: int = 0
+    failed_tasks: int = 0
+    average_latency_ms: float = 0.0
     last_heartbeat: datetime = field(default_factory=datetime.now)
-    connection_count: int = 0
-    processing_queue: int = 0
     
-    def __post_init__(self):
-        """Initialize edge node with quantum-safe identification."""
-        node_data = f"{self.node_id}{self.node_type.value}{self.location}"
-        self.quantum_safe_hash = hashlib.sha3_256(node_data.encode()).hexdigest()[:16]
-
-
-@dataclass
-class EdgeRequest:
-    """Represents a request processed at the edge."""
-    request_id: str = field(default_factory=lambda: secrets.token_hex(12))
-    client_location: Optional[Dict[str, float]] = None
-    request_size: int = 0  # bytes
-    processing_requirements: Dict[str, float] = field(default_factory=dict)
-    priority: int = 1  # 1-10, higher is more important
-    deadline: Optional[datetime] = None
-    assigned_node: Optional[str] = None
-    processing_time: Optional[float] = None
-    quantum_safe: bool = True
+    @property
+    def total_capacity_score(self) -> float:
+        """Calculate total capacity score (0-100)."""
+        cpu_score = (100 - self.cpu_utilization)
+        memory_score = (100 - self.memory_utilization) 
+        storage_score = (100 - self.storage_utilization)
+        network_score = (100 - self.network_utilization)
+        
+        return (cpu_score + memory_score + storage_score + network_score) / 4
     
-    def __post_init__(self):
-        """Initialize request with quantum-safe tracking."""
-        request_data = f"{self.request_id}{self.client_location}{self.request_size}"
-        self.quantum_hash = hashlib.sha3_256(request_data.encode()).hexdigest()[:12]
-
-
-@dataclass
-class ScalingMetrics:
-    """Metrics for auto-scaling decisions."""
-    timestamp: datetime = field(default_factory=datetime.now)
-    total_nodes: int = 0
-    active_nodes: int = 0
-    average_load: float = 0.0
-    peak_load: float = 0.0
-    requests_per_second: float = 0.0
-    average_latency: float = 0.0
-    p95_latency: float = 0.0
-    error_rate: float = 0.0
-    prediction_confidence: float = 0.0
-    quantum_optimization_score: float = 0.0
-
-
-class HyperScaleEdgeOrchestrator:
-    """Hyper-scale edge computing orchestrator with quantum-enhanced optimization.
+    @property
+    def efficiency_score(self) -> float:
+        """Calculate efficiency score based on performance."""
+        total_tasks = self.completed_tasks + self.failed_tasks
+        if total_tasks == 0:
+            return 100.0
+        
+        success_rate = self.completed_tasks / total_tasks
+        latency_score = max(0, 100 - self.average_latency_ms)
+        
+        return (success_rate * 100 + latency_score) / 2
     
-    Features:
-    - Global edge node management
-    - Quantum-enhanced load balancing
-    - AI-driven predictive scaling
-    - Multi-region coordination
-    - Real-time optimization
-    - Fault-tolerant edge deployment
-    """
-    
-    def __init__(self,
-                 min_nodes: int = 10,
-                 max_nodes: int = 10000,
-                 scaling_cooldown: int = 60,  # seconds
-                 quantum_optimization: bool = True,
-                 ai_prediction_enabled: bool = True):
-        self.logger = get_logger(__name__)
-        self.min_nodes = min_nodes
-        self.max_nodes = max_nodes
-        self.scaling_cooldown = scaling_cooldown
-        self.quantum_optimization = quantum_optimization
-        self.ai_prediction_enabled = ai_prediction_enabled
-        
-        # Edge infrastructure
-        self.edge_nodes: Dict[str, EdgeNode] = {}
-        self.node_groups: Dict[str, Set[str]] = defaultdict(set)  # region -> node_ids
-        self.request_queue: deque = deque()
-        self.processing_history: deque = deque(maxlen=10000)
-        
-        # Load balancing
-        self.load_balancing_strategy = LoadBalancingStrategy.QUANTUM_ANNEALING
-        self.balancer_state = self._initialize_load_balancer()
-        
-        # Auto-scaling
-        self.scaling_metrics_history: deque = deque(maxlen=1000)
-        self.last_scaling_action: Optional[datetime] = None
-        self.scaling_predictor = self._initialize_scaling_predictor()
-        
-        # Quantum optimization
-        if self.quantum_optimization:
-            self.quantum_optimizer = self._initialize_quantum_optimizer()
-        
-        # Reliability system integration
-        self.reliability_system = QuantumResilientReliabilitySystem()
-        
-        # Performance monitoring
-        self.performance_monitor = self._initialize_performance_monitor()
-        
-        # Start background processes
-        self._start_background_processes()
-    
-    def _initialize_load_balancer(self) -> Dict[str, Any]:
-        """Initialize quantum-enhanced load balancer."""
-        return {
-            "strategy": self.load_balancing_strategy,
-            "weights": {},
-            "performance_history": defaultdict(list),
-            "quantum_state_vector": np.zeros(100),  # Quantum state for optimization
-            "optimization_iterations": 0,
-            "convergence_threshold": 1e-6,
-            "annealing_temperature": 1.0,
-            "cooling_rate": 0.95
-        }
-    
-    def _initialize_scaling_predictor(self) -> Dict[str, Any]:
-        """Initialize AI-driven scaling predictor."""
-        return {
-            "model_type": "lstm_attention_transformer",
-            "prediction_window": 3600,  # 1 hour in seconds
-            "feature_dimensions": 64,
-            "hidden_layers": [256, 128, 64],
-            "attention_heads": 8,
-            "learning_rate": 0.001,
-            "batch_size": 32,
-            "model_weights": np.random.normal(0, 0.1, (1000,)),  # Simulated weights
-            "training_history": [],
-            "prediction_accuracy": 0.85,
-            "confidence_threshold": 0.8
-        }
-    
-    def _initialize_quantum_optimizer(self) -> Dict[str, Any]:
-        """Initialize quantum annealing optimizer."""
-        return {
-            "quantum_processor": "D-Wave_Advantage_System",
-            "qubit_count": 5000,
-            "annealing_time": 20,  # microseconds
-            "num_reads": 1000,
-            "optimization_problems": {
-                "load_balancing": {"variables": 100, "constraints": 50},
-                "resource_allocation": {"variables": 200, "constraints": 100},
-                "routing_optimization": {"variables": 500, "constraints": 250}
-            },
-            "quantum_advantage_threshold": 1.5,  # speedup factor
-            "hybrid_classical_quantum": True,
-            "error_correction": "surface_code"
-        }
-    
-    def _initialize_performance_monitor(self) -> Dict[str, Any]:
-        """Initialize performance monitoring system."""
-        return {
-            "metrics_collection_interval": 1,  # seconds
-            "metric_retention_days": 30,
-            "alerting_thresholds": {
-                "latency_p95": 100,  # milliseconds
-                "error_rate": 1.0,   # percentage
-                "node_failure_rate": 0.1,  # percentage
-                "quantum_coherence_time": 10   # microseconds
-            },
-            "dashboard_update_interval": 5,  # seconds
-            "anomaly_detection": {
-                "algorithm": "isolation_forest",
-                "contamination": 0.1,
-                "window_size": 1000
-            }
-        }
-    
-    def _start_background_processes(self) -> None:
-        """Start background processes for edge management."""
-        # Health monitoring
-        threading.Thread(target=self._health_monitoring_loop, daemon=True).start()
-        
-        # Metrics collection
-        threading.Thread(target=self._metrics_collection_loop, daemon=True).start()
-        
-        # Auto-scaling
-        threading.Thread(target=self._auto_scaling_loop, daemon=True).start()
-        
-        # Quantum optimization
-        if self.quantum_optimization:
-            threading.Thread(target=self._quantum_optimization_loop, daemon=True).start()
-        
-        self.logger.info("🌐 Hyper-scale edge orchestrator background processes started")
-    
-    async def register_edge_node(self, 
-                                node_type: EdgeNodeType,
-                                location: Dict[str, float],
-                                capabilities: Dict[str, Any],
-                                region: str = "default") -> EdgeNode:
-        """Register a new edge node in the network."""
-        node = EdgeNode(
-            node_type=node_type,
-            location=location,
-            capabilities=capabilities,
-            quantum_enabled=capabilities.get("quantum_enabled", False)
+    def can_accept_task(self, task_resource_requirement: float = 10.0) -> bool:
+        """Check if node can accept a new task."""
+        return (
+            self.state == EdgeNodeState.ACTIVE and
+            self.total_capacity_score > task_resource_requirement and
+            self.active_tasks < self.cpu_cores * 2  # Max 2 tasks per core
         )
-        
-        # Calculate latency to center (simulated)
-        node.latency_to_center = self._calculate_latency_to_center(location)
-        
-        # Register node
-        self.edge_nodes[node.node_id] = node
-        self.node_groups[region].add(node.node_id)
-        
-        # Update load balancer weights
-        await self._update_load_balancer_weights()
-        
-        self.logger.info(f"✅ Edge node registered: {node.node_id[:8]} ({node_type.value}) in {region}")
-        return node
+
+
+@dataclass
+class DistributedTask:
+    """Represents a distributed computing task."""
+    task_id: str
+    priority: TaskPriority = TaskPriority.MEDIUM
+    resource_requirements: Dict[str, float] = field(default_factory=dict)
+    estimated_duration_ms: float = 1000.0
+    max_retries: int = 3
     
-    def _calculate_latency_to_center(self, location: Dict[str, float]) -> float:
-        """Calculate network latency to data center (simulated)."""
-        # Simplified latency calculation based on geographic distance
-        center_lat, center_lon = 40.7128, -74.0060  # New York as reference
-        lat, lon = location.get("lat", center_lat), location.get("lon", center_lon)
-        
-        # Haversine distance (simplified)
-        distance_km = ((lat - center_lat) ** 2 + (lon - center_lon) ** 2) ** 0.5 * 111
-        
-        # Convert to network latency (simplified model)
-        base_latency = min(distance_km * 0.1, 200)  # Max 200ms
-        return base_latency + np.random.normal(0, 5)  # Add noise
+    # Execution tracking
+    assigned_node: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    retry_count: int = 0
     
-    async def process_edge_request(self, 
-                                 request: EdgeRequest,
-                                 timeout: float = 30.0) -> Dict[str, Any]:
-        """Process request using optimal edge node."""
-        start_time = time.time()
-        
-        try:
-            # Select optimal edge node
-            selected_node = await self._select_optimal_edge_node(request)
-            
-            if not selected_node:
-                raise Exception("No available edge nodes for request processing")
-            
-            # Execute request with quantum-safe monitoring
-            result = await self.reliability_system.execute_quantum_safe_operation(
-                operation_type="edge_processing",
-                operation_func=self._execute_edge_processing,
-                request=request,
-                node=selected_node,
-                timeout=timeout
-            )
-            
-            processing_time = time.time() - start_time
-            request.processing_time = processing_time
-            request.assigned_node = selected_node.node_id
-            
-            # Update metrics and node state
-            await self._update_processing_metrics(request, selected_node, processing_time)
-            
-            return {
-                "request_id": request.request_id,
-                "node_id": selected_node.node_id,
-                "processing_time": processing_time,
-                "result": result,
-                "quantum_safe": True
-            }
-            
-        except Exception as e:
-            processing_time = time.time() - start_time
-            self.logger.error(f"Edge request processing failed: {e}")
-            
-            # Record failure metrics
-            await self._record_processing_failure(request, processing_time, str(e))
-            
-            raise
-        finally:
-            # Add to processing history
-            self.processing_history.append({
-                "timestamp": datetime.now(),
-                "request_id": request.request_id,
-                "processing_time": processing_time,
-                "success": hasattr(request, "assigned_node"),
-                "quantum_hash": request.quantum_hash
-            })
+    @property
+    def is_complete(self) -> bool:
+        """Check if task is complete."""
+        return self.end_time is not None
     
-    async def _select_optimal_edge_node(self, request: EdgeRequest) -> Optional[EdgeNode]:
-        """Select optimal edge node using quantum-enhanced optimization."""
-        available_nodes = [
-            node for node in self.edge_nodes.values()
-            if node.health_score > 80.0 and node.current_load < 0.9
-        ]
+    @property
+    def execution_time_ms(self) -> Optional[float]:
+        """Get execution time in milliseconds."""
+        if self.start_time and self.end_time:
+            return (self.end_time - self.start_time).total_seconds() * 1000
+        return None
+
+
+class IntelligentLoadBalancer:
+    """Intelligent load balancer with quantum-inspired optimization."""
+    
+    def __init__(self):
+        self.strategy = LoadBalancingStrategy.QUANTUM_OPTIMIZED
+        self.performance_history = defaultdict(list)
+        self.node_weights = defaultdict(lambda: 1.0)
+        self.logger = self._setup_logger()
+        
+    def _setup_logger(self):
+        logger = logging.getLogger(f"load_balancer_{id(self)}")
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+        return logger
+    
+    def select_node(self, nodes: List[EdgeNode], task: DistributedTask) -> Optional[EdgeNode]:
+        """Select optimal node for task execution."""
+        available_nodes = [node for node in nodes if node.can_accept_task()]
         
         if not available_nodes:
             return None
         
-        if self.load_balancing_strategy == LoadBalancingStrategy.QUANTUM_ANNEALING:
-            return await self._quantum_node_selection(request, available_nodes)
-        elif self.load_balancing_strategy == LoadBalancingStrategy.AI_PREDICTIVE:
-            return await self._ai_node_selection(request, available_nodes)
+        if self.strategy == LoadBalancingStrategy.QUANTUM_OPTIMIZED:
+            return self._quantum_optimized_selection(available_nodes, task)
+        elif self.strategy == LoadBalancingStrategy.RESOURCE_AWARE:
+            return self._resource_aware_selection(available_nodes, task)
+        elif self.strategy == LoadBalancingStrategy.LATENCY_BASED:
+            return self._latency_based_selection(available_nodes)
+        elif self.strategy == LoadBalancingStrategy.LEAST_CONNECTIONS:
+            return self._least_connections_selection(available_nodes)
         else:
-            return await self._classical_node_selection(request, available_nodes)
+            return self._round_robin_selection(available_nodes)
     
-    async def _quantum_node_selection(self, 
-                                    request: EdgeRequest,
-                                    available_nodes: List[EdgeNode]) -> EdgeNode:
-        """Select node using quantum annealing optimization."""
-        if not self.quantum_optimization:
-            return await self._classical_node_selection(request, available_nodes)
+    def _quantum_optimized_selection(self, nodes: List[EdgeNode], task: DistributedTask) -> EdgeNode:
+        """Quantum-inspired optimization for node selection."""
+        best_node = None
+        best_score = -1
         
-        # Quantum optimization problem formulation
-        num_nodes = len(available_nodes)
-        
-        # Create cost matrix (simplified)
-        cost_matrix = np.zeros((num_nodes, num_nodes))
-        
-        for i, node in enumerate(available_nodes):
-            # Cost factors: latency, load, distance
-            latency_cost = node.latency_to_center / 1000.0  # Normalize
-            load_cost = node.current_load
-            distance_cost = self._calculate_client_distance(request, node)
+        for node in nodes:
+            # Resource score (0-1)
+            resource_score = node.total_capacity_score / 100
             
-            cost_matrix[i][i] = latency_cost + load_cost + distance_cost
+            # Efficiency score (0-1)
+            efficiency_score = node.efficiency_score / 100
+            
+            # Load balance score (0-1) - prefer less loaded nodes
+            max_tasks = max(n.active_tasks for n in nodes) or 1
+            load_score = 1 - (node.active_tasks / max_tasks)
+            
+            # Priority boost for high-priority tasks
+            priority_multiplier = 1.0 + (task.priority.value - 1) * 0.1
+            
+            # Historical performance weight
+            historical_weight = self.node_weights[node.node_id]
+            
+            # Quantum-inspired superposition of all factors
+            quantum_score = (
+                resource_score * 0.3 +
+                efficiency_score * 0.25 +
+                load_score * 0.2 +
+                (historical_weight / 2.0) * 0.15 +
+                (1.0 / max(node.average_latency_ms, 1.0)) * 0.1
+            ) * priority_multiplier
+            
+            if quantum_score > best_score:
+                best_score = quantum_score
+                best_node = node
         
-        # Quantum annealing (simulated)
-        optimal_index = await self._simulate_quantum_annealing(cost_matrix)
-        
-        selected_node = available_nodes[optimal_index]
-        
-        # Update quantum optimization state
-        self.balancer_state["optimization_iterations"] += 1
-        self.balancer_state["annealing_temperature"] *= self.balancer_state["cooling_rate"]
-        
-        return selected_node
+        return best_node or nodes[0]
     
-    async def _simulate_quantum_annealing(self, cost_matrix: np.ndarray) -> int:
-        """Simulate quantum annealing for optimization (D-Wave style)."""
-        num_variables = cost_matrix.shape[0]
+    def _resource_aware_selection(self, nodes: List[EdgeNode], task: DistributedTask) -> EdgeNode:
+        """Select node based on resource requirements."""
+        best_node = None
+        best_score = -1
         
-        # Initialize quantum state
-        current_state = np.random.choice([0, 1], size=num_variables)
-        current_energy = np.sum(cost_matrix * np.outer(current_state, current_state))
+        cpu_requirement = task.resource_requirements.get('cpu', 10.0)
+        memory_requirement = task.resource_requirements.get('memory', 10.0)
         
-        temperature = self.balancer_state["annealing_temperature"]
+        for node in nodes:
+            cpu_available = 100 - node.cpu_utilization
+            memory_available = 100 - node.memory_utilization
+            
+            if cpu_available >= cpu_requirement and memory_available >= memory_requirement:
+                cpu_efficiency = 1 - abs(cpu_available - cpu_requirement) / 100
+                memory_efficiency = 1 - abs(memory_available - memory_requirement) / 100
+                overall_score = (cpu_efficiency + memory_efficiency) / 2
+                
+                if overall_score > best_score:
+                    best_score = overall_score
+                    best_node = node
         
-        # Simulated annealing with quantum-inspired operations
-        for iteration in range(100):
-            # Quantum tunneling probability
-            tunneling_prob = np.exp(-temperature)
-            
-            # Try state transitions
-            new_state = current_state.copy()
-            flip_index = np.random.randint(num_variables)
-            new_state[flip_index] = 1 - new_state[flip_index]
-            
-            new_energy = np.sum(cost_matrix * np.outer(new_state, new_state))
-            energy_diff = new_energy - current_energy
-            
-            # Accept or reject transition (with quantum tunneling)
-            if energy_diff < 0 or np.random.random() < tunneling_prob:
-                current_state = new_state
-                current_energy = new_energy
-            
-            temperature *= 0.99  # Cool down
-        
-        # Return index of selected node (highest probability state)
-        return np.argmax(current_state) if np.sum(current_state) > 0 else 0
+        return best_node or nodes[0]
     
-    def _calculate_client_distance(self, request: EdgeRequest, node: EdgeNode) -> float:
-        """Calculate distance between client and edge node."""
-        if not request.client_location or not node.location:
-            return 0.5  # Default normalized distance
-        
-        client_lat = request.client_location.get("lat", 0)
-        client_lon = request.client_location.get("lon", 0)
-        node_lat = node.location.get("lat", 0)
-        node_lon = node.location.get("lon", 0)
-        
-        # Simplified distance calculation
-        distance = ((client_lat - node_lat) ** 2 + (client_lon - node_lon) ** 2) ** 0.5
-        return min(distance / 100.0, 1.0)  # Normalize to 0-1
+    def _latency_based_selection(self, nodes: List[EdgeNode]) -> EdgeNode:
+        """Select node with best latency performance."""
+        return min(nodes, key=lambda node: node.average_latency_ms)
     
-    async def _ai_node_selection(self, 
-                               request: EdgeRequest,
-                               available_nodes: List[EdgeNode]) -> EdgeNode:
-        """Select node using AI predictive modeling."""
-        # Feature extraction for each node
-        features_matrix = np.zeros((len(available_nodes), self.scaling_predictor["feature_dimensions"]))
-        
-        for i, node in enumerate(available_nodes):
-            features = np.array([
-                node.current_load,
-                node.health_score / 100.0,
-                node.latency_to_center / 1000.0,
-                node.connection_count / node.max_capacity,
-                float(node.quantum_enabled),
-                len(node.capabilities),
-                node.processing_queue / 100.0,
-                time.time() % 86400 / 86400.0,  # Time of day feature
-            ])
-            
-            # Pad or truncate to feature dimensions
-            if len(features) < self.scaling_predictor["feature_dimensions"]:
-                features = np.pad(features, (0, self.scaling_predictor["feature_dimensions"] - len(features)))
-            else:
-                features = features[:self.scaling_predictor["feature_dimensions"]]
-            
-            features_matrix[i] = features
-        
-        # AI prediction (simulated neural network)
-        weights = self.scaling_predictor["model_weights"][:features_matrix.size].reshape(features_matrix.shape)
-        scores = np.sum(features_matrix * weights, axis=1)
-        
-        # Select node with highest score
-        best_index = np.argmax(scores)
-        return available_nodes[best_index]
+    def _least_connections_selection(self, nodes: List[EdgeNode]) -> EdgeNode:
+        """Select node with least active tasks."""
+        return min(nodes, key=lambda node: node.active_tasks)
     
-    async def _classical_node_selection(self, 
-                                      request: EdgeRequest,
-                                      available_nodes: List[EdgeNode]) -> EdgeNode:
-        """Select node using classical algorithms."""
-        if self.load_balancing_strategy == LoadBalancingStrategy.LEAST_CONNECTIONS:
-            return min(available_nodes, key=lambda n: n.connection_count)
-        elif self.load_balancing_strategy == LoadBalancingStrategy.LATENCY_OPTIMIZED:
-            return min(available_nodes, key=lambda n: n.latency_to_center)
-        elif self.load_balancing_strategy == LoadBalancingStrategy.GEOGRAPHIC_PROXIMITY:
-            return min(available_nodes, key=lambda n: self._calculate_client_distance(request, n))
-        else:  # ROUND_ROBIN
-            # Simple round-robin based on node ID hash
-            hash_val = hash(request.request_id) % len(available_nodes)
-            return available_nodes[hash_val]
+    def _round_robin_selection(self, nodes: List[EdgeNode]) -> EdgeNode:
+        """Simple round-robin selection."""
+        index = int(time.time()) % len(nodes)
+        return nodes[index]
     
-    async def _execute_edge_processing(self, 
-                                     request: EdgeRequest,
-                                     node: EdgeNode,
-                                     timeout: float,
-                                     **kwargs) -> Dict[str, Any]:
-        """Execute actual edge processing on selected node."""
-        # Simulate edge processing
-        processing_time = np.random.uniform(0.01, 0.1)  # 10-100ms
-        
-        # Add quantum context if available
-        quantum_context = kwargs.get("quantum_context", {})
-        
-        # Simulate processing delay
-        await asyncio.sleep(processing_time)
-        
-        # Update node state
-        node.connection_count += 1
-        node.current_load = min(1.0, node.current_load + 0.1)
-        node.processing_queue = max(0, node.processing_queue - 1)
-        node.last_heartbeat = datetime.now()
-        
-        return {
-            "status": "success",
-            "processing_time": processing_time,
-            "node_id": node.node_id,
-            "quantum_enhanced": node.quantum_enabled,
-            "quantum_context": quantum_context,
-            "result_data": f"processed_{request.request_id}",
-            "edge_location": node.location
-        }
-    
-    async def _update_processing_metrics(self, 
-                                       request: EdgeRequest,
-                                       node: EdgeNode,
-                                       processing_time: float) -> None:
-        """Update processing metrics and node performance."""
-        # Update node performance history
-        self.balancer_state["performance_history"][node.node_id].append({
-            "timestamp": datetime.now(),
-            "processing_time": processing_time,
-            "request_size": request.request_size,
-            "success": True
+    def update_performance(self, node_id: str, task: DistributedTask, success: bool):
+        """Update node performance metrics for learning."""
+        self.performance_history[node_id].append({
+            'success': success,
+            'execution_time': task.execution_time_ms,
+            'timestamp': datetime.now()
         })
         
         # Keep only recent history
-        if len(self.balancer_state["performance_history"][node.node_id]) > 100:
-            self.balancer_state["performance_history"][node.node_id] = \
-                self.balancer_state["performance_history"][node.node_id][-50:]
+        if len(self.performance_history[node_id]) > 100:
+            self.performance_history[node_id] = self.performance_history[node_id][-100:]
         
-        # Update scaling metrics
-        current_metrics = ScalingMetrics(
-            total_nodes=len(self.edge_nodes),
-            active_nodes=len([n for n in self.edge_nodes.values() if n.health_score > 80]),
-            average_load=np.mean([n.current_load for n in self.edge_nodes.values()]),
-            peak_load=max([n.current_load for n in self.edge_nodes.values()], default=0),
-            requests_per_second=len(self.processing_history) / max(60, 1),  # Last minute
-            average_latency=processing_time * 1000,  # Convert to ms
-            quantum_optimization_score=self.balancer_state.get("optimization_iterations", 0) / 100.0
-        )
-        
-        self.scaling_metrics_history.append(current_metrics)
+        # Update node weights based on performance
+        history = self.performance_history[node_id]
+        if len(history) >= 10:
+            success_rate = sum(1 for h in history[-10:] if h['success']) / 10
+            avg_time = statistics.mean(h['execution_time'] for h in history[-10:] if h['execution_time'])
+            
+            # Weight based on success rate and speed
+            time_factor = max(0.1, 1.0 / (avg_time / 1000))  # Prefer faster nodes
+            self.node_weights[node_id] = success_rate * time_factor
+
+
+class HyperScaleEdgeSystem:
+    """Hyper-scale edge computing system with intelligent orchestration."""
     
-    async def _record_processing_failure(self, 
-                                       request: EdgeRequest,
-                                       processing_time: float,
-                                       error: str) -> None:
-        """Record processing failure for metrics and optimization."""
-        failure_record = {
-            "timestamp": datetime.now(),
-            "request_id": request.request_id,
-            "processing_time": processing_time,
-            "error": error,
-            "quantum_hash": request.quantum_hash
+    def __init__(self, initial_node_count: int = 10):
+        self.nodes = {}
+        self.load_balancer = IntelligentLoadBalancer()
+        self.task_queue = deque()
+        self.active_tasks = {}
+        self.completed_tasks = {}
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+        self.is_running = False
+        self.logger = self._setup_logger()
+        
+        # Initialize edge nodes
+        self._initialize_edge_nodes(initial_node_count)
+        
+        # Monitoring
+        self.metrics = {
+            'total_tasks_processed': 0,
+            'total_execution_time': 0.0,
+            'average_latency': 0.0,
+            'throughput_per_second': 0.0,
+            'resource_utilization': 0.0
         }
         
-        # Add to processing history as failure
-        self.processing_history.append({
-            **failure_record,
-            "success": False
-        })
-        
-        # Update error rate metrics
-        recent_requests = list(self.processing_history)[-100:]  # Last 100 requests
-        error_rate = sum(1 for r in recent_requests if not r["success"]) / max(len(recent_requests), 1)
-        
-        # Trigger auto-scaling if error rate is high
-        if error_rate > 0.1:  # 10% error rate threshold
-            await self._trigger_emergency_scaling()
+    def _setup_logger(self):
+        logger = logging.getLogger(f"hyperscale_edge_{id(self)}")
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+        return logger
     
-    async def _update_load_balancer_weights(self) -> None:
-        """Update load balancer weights based on node performance."""
-        for node_id, node in self.edge_nodes.items():
-            # Calculate weight based on performance factors
-            health_weight = node.health_score / 100.0
-            load_weight = 1.0 - node.current_load
-            latency_weight = max(0.1, 1.0 - (node.latency_to_center / 1000.0))
-            quantum_weight = 1.2 if node.quantum_enabled else 1.0
+    def _initialize_edge_nodes(self, count: int):
+        """Initialize edge nodes across different regions."""
+        regions = ["us-east", "us-west", "eu-west", "asia-pacific", "south-america"]
+        
+        for i in range(count):
+            node_id = f"edge-node-{i:03d}"
+            region = regions[i % len(regions)]
             
-            combined_weight = health_weight * load_weight * latency_weight * quantum_weight
-            self.balancer_state["weights"][node_id] = combined_weight
-    
-    def _health_monitoring_loop(self) -> None:
-        """Background health monitoring for edge nodes."""
-        while True:
-            try:
-                current_time = datetime.now()
-                
-                for node_id, node in list(self.edge_nodes.items()):
-                    # Check heartbeat timeout
-                    if current_time - node.last_heartbeat > timedelta(minutes=5):
-                        node.health_score = max(0.0, node.health_score - 10.0)
-                        if node.health_score < 20.0:
-                            self.logger.warning(f"Edge node {node_id[:8]} marked as unhealthy")
-                    
-                    # Simulate health score recovery
-                    if node.health_score < 100.0 and np.random.random() < 0.1:
-                        node.health_score = min(100.0, node.health_score + 1.0)
-                    
-                    # Update current load (simulate decay)
-                    node.current_load = max(0.0, node.current_load - 0.05)
-                    node.connection_count = max(0, node.connection_count - np.random.poisson(2))
-                
-                time.sleep(10)  # Check every 10 seconds
-                
-            except Exception as e:
-                self.logger.error(f"Health monitoring error: {e}")
-                time.sleep(30)
-    
-    def _metrics_collection_loop(self) -> None:
-        """Background metrics collection."""
-        while True:
-            try:
-                # Collect current metrics
-                current_metrics = self._collect_current_metrics()
-                
-                # Store metrics (in production, would send to monitoring system)
-                self.scaling_metrics_history.append(current_metrics)
-                
-                time.sleep(self.performance_monitor["metrics_collection_interval"])
-                
-            except Exception as e:
-                self.logger.error(f"Metrics collection error: {e}")
-                time.sleep(10)
-    
-    def _collect_current_metrics(self) -> ScalingMetrics:
-        """Collect current system metrics."""
-        nodes = list(self.edge_nodes.values())
-        recent_requests = list(self.processing_history)[-100:]
-        
-        return ScalingMetrics(
-            total_nodes=len(nodes),
-            active_nodes=sum(1 for n in nodes if n.health_score > 80),
-            average_load=np.mean([n.current_load for n in nodes]) if nodes else 0,
-            peak_load=max([n.current_load for n in nodes], default=0),
-            requests_per_second=len(recent_requests) / 60.0,  # Approximate RPS
-            average_latency=np.mean([r.get("processing_time", 0) * 1000 for r in recent_requests]) if recent_requests else 0,
-            p95_latency=np.percentile([r.get("processing_time", 0) * 1000 for r in recent_requests], 95) if recent_requests else 0,
-            error_rate=sum(1 for r in recent_requests if not r.get("success", True)) / max(len(recent_requests), 1) * 100,
-            quantum_optimization_score=self.balancer_state.get("optimization_iterations", 0) / 100.0
-        )
-    
-    def _auto_scaling_loop(self) -> None:
-        """Background auto-scaling decision making."""
-        while True:
-            try:
-                # Check if cooling down
-                if (self.last_scaling_action and 
-                    datetime.now() - self.last_scaling_action < timedelta(seconds=self.scaling_cooldown)):
-                    time.sleep(30)
-                    continue
-                
-                # Get current metrics
-                current_metrics = self._collect_current_metrics()
-                
-                # Make scaling decision
-                scaling_decision = self._make_scaling_decision(current_metrics)
-                
-                if scaling_decision["action"] != "no_action":
-                    asyncio.create_task(self._execute_scaling_action(scaling_decision))
-                
-                time.sleep(30)  # Check every 30 seconds
-                
-            except Exception as e:
-                self.logger.error(f"Auto-scaling error: {e}")
-                time.sleep(60)
-    
-    def _make_scaling_decision(self, metrics: ScalingMetrics) -> Dict[str, Any]:
-        """Make intelligent scaling decision based on metrics and predictions."""
-        # Scale up conditions
-        if (metrics.average_load > 0.7 or 
-            metrics.error_rate > 5.0 or 
-            metrics.p95_latency > 200):
+            # Vary node specifications
+            cpu_cores = random.choice([4, 8, 16, 32])
+            memory_gb = cpu_cores * random.choice([4, 8])
+            storage_gb = random.choice([256, 512, 1024, 2048])
+            bandwidth = random.choice([100, 1000, 10000])
             
-            if metrics.total_nodes < self.max_nodes:
-                return {
-                    "action": "scale_up",
-                    "target_nodes": min(self.max_nodes, int(metrics.total_nodes * 1.5)),
-                    "reason": f"Load: {metrics.average_load:.1f}, Errors: {metrics.error_rate:.1f}%"
-                }
-        
-        # Scale down conditions
-        elif (metrics.average_load < 0.3 and 
-              metrics.error_rate < 1.0 and 
-              metrics.p95_latency < 100):
-            
-            if metrics.total_nodes > self.min_nodes:
-                return {
-                    "action": "scale_down",
-                    "target_nodes": max(self.min_nodes, int(metrics.total_nodes * 0.8)),
-                    "reason": f"Low load: {metrics.average_load:.1f}"
-                }
-        
-        return {"action": "no_action"}
-    
-    async def _execute_scaling_action(self, decision: Dict[str, Any]) -> None:
-        """Execute scaling action (scale up or down)."""
-        self.logger.info(f"🔄 Executing scaling action: {decision['action']} - {decision.get('reason', '')}")
-        
-        try:
-            if decision["action"] == "scale_up":
-                await self._scale_up_nodes(decision["target_nodes"])
-            elif decision["action"] == "scale_down":
-                await self._scale_down_nodes(decision["target_nodes"])
-            
-            self.last_scaling_action = datetime.now()
-            
-        except Exception as e:
-            self.logger.error(f"Scaling action failed: {e}")
-    
-    async def _scale_up_nodes(self, target_count: int) -> None:
-        """Scale up edge nodes."""
-        current_count = len(self.edge_nodes)
-        nodes_to_add = target_count - current_count
-        
-        for i in range(nodes_to_add):
-            # Create new edge node
-            await self.register_edge_node(
-                node_type=EdgeNodeType.REGIONAL_EDGE,
-                location={"lat": np.random.uniform(25, 50), "lon": np.random.uniform(-125, -70)},
-                capabilities={
-                    "cpu_cores": 8,
-                    "memory_gb": 32,
-                    "storage_gb": 500,
-                    "quantum_enabled": np.random.random() < 0.3
-                }
+            node = EdgeNode(
+                node_id=node_id,
+                region=region,
+                state=EdgeNodeState.ACTIVE,
+                cpu_cores=cpu_cores,
+                memory_gb=memory_gb,
+                storage_gb=storage_gb,
+                network_bandwidth_mbps=bandwidth
             )
+            
+            # Simulate some initial utilization
+            node.cpu_utilization = random.uniform(10, 40)
+            node.memory_utilization = random.uniform(15, 35)
+            node.storage_utilization = random.uniform(20, 60)
+            node.network_utilization = random.uniform(5, 25)
+            node.average_latency_ms = random.uniform(1, 10)
+            
+            self.nodes[node_id] = node
         
-        self.logger.info(f"✅ Scaled up: Added {nodes_to_add} edge nodes")
+        self.logger.info(f"Initialized {count} edge nodes across {len(set(n.region for n in self.nodes.values()))} regions")
     
-    async def _scale_down_nodes(self, target_count: int) -> None:
-        """Scale down edge nodes."""
-        current_count = len(self.edge_nodes)
-        nodes_to_remove = current_count - target_count
+    async def submit_task(self, task_func: Callable, *args, 
+                         priority: TaskPriority = TaskPriority.MEDIUM,
+                         resource_requirements: Dict[str, float] = None,
+                         estimated_duration_ms: float = 1000.0,
+                         **kwargs) -> str:
+        """Submit a task for distributed execution."""
         
-        # Select nodes to remove (least healthy/loaded)
-        nodes_by_priority = sorted(
-            self.edge_nodes.values(),
-            key=lambda n: (n.health_score, -n.current_load, -n.connection_count)
+        task = DistributedTask(
+            task_id=str(uuid.uuid4()),
+            priority=priority,
+            resource_requirements=resource_requirements or {"cpu": 10, "memory": 10},
+            estimated_duration_ms=estimated_duration_ms
         )
         
-        for i in range(min(nodes_to_remove, len(nodes_by_priority))):
-            node = nodes_by_priority[i]
-            
-            # Gracefully drain connections
-            await self._drain_node_connections(node)
-            
-            # Remove from tracking
-            del self.edge_nodes[node.node_id]
-            for region_nodes in self.node_groups.values():
-                region_nodes.discard(node.node_id)
+        # Store task function and arguments
+        task.result = {
+            'func': task_func,
+            'args': args,
+            'kwargs': kwargs
+        }
         
-        self.logger.info(f"✅ Scaled down: Removed {min(nodes_to_remove, len(nodes_by_priority))} edge nodes")
+        self.task_queue.append(task)
+        self.logger.debug(f"Task {task.task_id} queued with priority {priority.name}")
+        
+        return task.task_id
     
-    async def _drain_node_connections(self, node: EdgeNode) -> None:
-        """Gracefully drain connections from a node before removal."""
-        # Wait for existing connections to complete
-        max_wait = 30  # seconds
-        wait_time = 0
+    async def start_processing(self):
+        """Start the edge computing system."""
+        if self.is_running:
+            return
         
-        while node.connection_count > 0 and wait_time < max_wait:
-            await asyncio.sleep(1)
-            wait_time += 1
+        self.is_running = True
+        self.logger.info("=� Starting hyper-scale edge computing system")
         
-        if node.connection_count > 0:
-            self.logger.warning(f"Node {node.node_id[:8]} still has {node.connection_count} connections after drain timeout")
+        # Start processing loops
+        asyncio.create_task(self._task_dispatcher())
+        asyncio.create_task(self._node_monitor())
+        asyncio.create_task(self._metrics_collector())
     
-    def _quantum_optimization_loop(self) -> None:
-        """Background quantum optimization for load balancing."""
-        while True:
+    async def stop_processing(self):
+        """Stop the edge computing system."""
+        self.is_running = False
+        self.executor.shutdown(wait=True)
+        self.logger.info("� Stopped hyper-scale edge computing system")
+    
+    async def _task_dispatcher(self):
+        """Main task dispatcher loop."""
+        while self.is_running:
             try:
-                if not self.quantum_optimization:
-                    time.sleep(60)
-                    continue
+                if self.task_queue:
+                    # Get highest priority task
+                    task = max(self.task_queue, key=lambda t: t.priority.value)
+                    self.task_queue.remove(task)
+                    
+                    # Select optimal node
+                    available_nodes = list(self.nodes.values())
+                    selected_node = self.load_balancer.select_node(available_nodes, task)
+                    
+                    if selected_node:
+                        await self._execute_task_on_node(task, selected_node)
+                    else:
+                        # No available nodes, requeue task
+                        self.task_queue.appendleft(task)
+                        await asyncio.sleep(0.1)  # Wait before retrying
                 
-                # Perform quantum optimization every minute
-                self._optimize_quantum_load_balancing()
-                
-                time.sleep(60)
+                await asyncio.sleep(0.01)  # Small delay to prevent busy waiting
                 
             except Exception as e:
-                self.logger.error(f"Quantum optimization error: {e}")
-                time.sleep(120)
+                self.logger.error(f"Error in task dispatcher: {e}")
+                await asyncio.sleep(1)
     
-    def _optimize_quantum_load_balancing(self) -> None:
-        """Optimize load balancing using quantum algorithms."""
+    async def _execute_task_on_node(self, task: DistributedTask, node: EdgeNode):
+        """Execute task on selected node."""
+        task.assigned_node = node.node_id
+        task.start_time = datetime.now()
+        
+        # Update node state
+        node.active_tasks += 1
+        self.active_tasks[task.task_id] = task
+        
+        self.logger.debug(f"Executing task {task.task_id} on node {node.node_id}")
+        
         try:
-            # Update quantum state vector based on current system state
-            nodes = list(self.edge_nodes.values())
-            if not nodes:
-                return
+            # Execute task asynchronously
+            loop = asyncio.get_event_loop()
             
-            state_vector = np.zeros(min(100, len(nodes) * 4))  # Quantum state representation
+            # Extract task function and arguments
+            task_info = task.result
+            task_func = task_info['func']
+            args = task_info['args']
+            kwargs = task_info['kwargs']
             
-            for i, node in enumerate(nodes[:25]):  # Limit to prevent overflow
-                base_idx = i * 4
-                if base_idx + 3 < len(state_vector):
-                    state_vector[base_idx] = node.current_load
-                    state_vector[base_idx + 1] = node.health_score / 100.0
-                    state_vector[base_idx + 2] = min(1.0, node.latency_to_center / 1000.0)
-                    state_vector[base_idx + 3] = float(node.quantum_enabled)
+            # Run task in executor to avoid blocking
+            if asyncio.iscoroutinefunction(task_func):
+                result = await task_func(*args, **kwargs)
+            else:
+                result = await loop.run_in_executor(self.executor, task_func, *args, **kwargs)
             
-            self.balancer_state["quantum_state_vector"] = state_vector
-            self.balancer_state["optimization_iterations"] += 1
+            # Task completed successfully
+            task.end_time = datetime.now()
+            task.result = result
+            
+            # Update node metrics
+            node.active_tasks -= 1
+            node.completed_tasks += 1
+            
+            execution_time = task.execution_time_ms
+            if execution_time:
+                # Update average latency with exponential moving average
+                alpha = 0.1
+                node.average_latency_ms = (1 - alpha) * node.average_latency_ms + alpha * execution_time
+            
+            # Move to completed tasks
+            self.completed_tasks[task.task_id] = task
+            del self.active_tasks[task.task_id]
+            
+            # Update load balancer performance metrics
+            self.load_balancer.update_performance(node.node_id, task, True)
+            
+            self.logger.debug(f"Task {task.task_id} completed successfully on {node.node_id}")
             
         except Exception as e:
-            self.logger.error(f"Quantum optimization update failed: {e}")
+            # Task failed
+            task.end_time = datetime.now()
+            task.error = str(e)
+            
+            # Update node metrics
+            node.active_tasks -= 1
+            node.failed_tasks += 1
+            
+            # Handle retry logic
+            if task.retry_count < task.max_retries:
+                task.retry_count += 1
+                task.start_time = None
+                task.end_time = None
+                task.assigned_node = None
+                self.task_queue.append(task)  # Requeue for retry
+                self.logger.warning(f"Task {task.task_id} failed, retrying ({task.retry_count}/{task.max_retries})")
+            else:
+                # Max retries reached
+                self.completed_tasks[task.task_id] = task
+                self.logger.error(f"Task {task.task_id} failed permanently: {e}")
+            
+            del self.active_tasks[task.task_id]
+            
+            # Update load balancer performance metrics
+            self.load_balancer.update_performance(node.node_id, task, False)
     
-    async def _trigger_emergency_scaling(self) -> None:
-        """Trigger emergency scaling in response to high error rates."""
-        self.logger.warning("🚨 Triggering emergency scaling due to high error rate")
-        
-        current_metrics = self._collect_current_metrics()
-        emergency_target = min(self.max_nodes, int(current_metrics.total_nodes * 2))
-        
-        await self._execute_scaling_action({
-            "action": "scale_up",
-            "target_nodes": emergency_target,
-            "reason": "Emergency scaling - high error rate"
-        })
+    async def _node_monitor(self):
+        """Monitor and manage edge nodes."""
+        while self.is_running:
+            try:
+                for node in self.nodes.values():
+                    # Simulate resource utilization changes
+                    node.cpu_utilization += random.uniform(-5, 5)
+                    node.memory_utilization += random.uniform(-3, 3)
+                    node.network_utilization += random.uniform(-2, 2)
+                    
+                    # Keep utilizations within bounds
+                    node.cpu_utilization = max(0, min(100, node.cpu_utilization))
+                    node.memory_utilization = max(0, min(100, node.memory_utilization))
+                    node.network_utilization = max(0, min(100, node.network_utilization))
+                    
+                    # Update node state based on utilization
+                    if node.cpu_utilization > 90 or node.memory_utilization > 95:
+                        if node.state != EdgeNodeState.OVERLOADED:
+                            node.state = EdgeNodeState.OVERLOADED
+                            self.logger.warning(f"Node {node.node_id} is overloaded")
+                    elif node.state == EdgeNodeState.OVERLOADED and node.cpu_utilization < 70:
+                        node.state = EdgeNodeState.ACTIVE
+                        self.logger.info(f"Node {node.node_id} recovered from overload")
+                    
+                    node.last_heartbeat = datetime.now()
+                
+                await asyncio.sleep(5)  # Monitor every 5 seconds
+                
+            except Exception as e:
+                self.logger.error(f"Error in node monitor: {e}")
+                await asyncio.sleep(1)
     
-    async def get_system_status(self) -> Dict[str, Any]:
+    async def _metrics_collector(self):
+        """Collect and update system metrics."""
+        while self.is_running:
+            try:
+                total_tasks = len(self.completed_tasks)
+                if total_tasks > 0:
+                    # Calculate average latency
+                    execution_times = [
+                        task.execution_time_ms for task in self.completed_tasks.values()
+                        if task.execution_time_ms
+                    ]
+                    
+                    if execution_times:
+                        self.metrics['average_latency'] = statistics.mean(execution_times)
+                        self.metrics['total_execution_time'] = sum(execution_times)
+                
+                # Calculate throughput (tasks per second in last minute)
+                recent_tasks = [
+                    task for task in self.completed_tasks.values()
+                    if task.end_time and task.end_time > datetime.now() - timedelta(minutes=1)
+                ]
+                self.metrics['throughput_per_second'] = len(recent_tasks) / 60
+                
+                # Calculate average resource utilization across all nodes
+                if self.nodes:
+                    avg_cpu = statistics.mean(node.cpu_utilization for node in self.nodes.values())
+                    avg_memory = statistics.mean(node.memory_utilization for node in self.nodes.values())
+                    self.metrics['resource_utilization'] = (avg_cpu + avg_memory) / 2
+                
+                self.metrics['total_tasks_processed'] = total_tasks
+                
+                await asyncio.sleep(10)  # Update metrics every 10 seconds
+                
+            except Exception as e:
+                self.logger.error(f"Error in metrics collector: {e}")
+                await asyncio.sleep(1)
+    
+    async def get_task_result(self, task_id: str, timeout_seconds: float = 30.0) -> Any:
+        """Get result of a submitted task."""
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout_seconds:
+            if task_id in self.completed_tasks:
+                task = self.completed_tasks[task_id]
+                if task.error:
+                    raise RuntimeError(f"Task failed: {task.error}")
+                return task.result
+            
+            await asyncio.sleep(0.1)
+        
+        raise TimeoutError(f"Task {task_id} did not complete within {timeout_seconds} seconds")
+    
+    def get_system_status(self) -> Dict[str, Any]:
         """Get comprehensive system status."""
-        current_metrics = self._collect_current_metrics()
+        # Node statistics
+        active_nodes = sum(1 for node in self.nodes.values() if node.state == EdgeNodeState.ACTIVE)
+        overloaded_nodes = sum(1 for node in self.nodes.values() if node.state == EdgeNodeState.OVERLOADED)
+        
+        # Task statistics
+        total_completed = len(self.completed_tasks)
+        total_active = len(self.active_tasks)
+        total_queued = len(self.task_queue)
+        
+        successful_tasks = sum(1 for task in self.completed_tasks.values() if not task.error)
+        failed_tasks = total_completed - successful_tasks
         
         return {
-            "timestamp": datetime.now(),
-            "edge_nodes": {
-                "total": len(self.edge_nodes),
-                "active": current_metrics.active_nodes,
-                "quantum_enabled": sum(1 for n in self.edge_nodes.values() if n.quantum_enabled),
-                "regions": len(self.node_groups),
-                "health_distribution": {
-                    "healthy": sum(1 for n in self.edge_nodes.values() if n.health_score > 80),
-                    "degraded": sum(1 for n in self.edge_nodes.values() if 50 <= n.health_score <= 80),
-                    "unhealthy": sum(1 for n in self.edge_nodes.values() if n.health_score < 50)
-                }
+            "system_info": {
+                "is_running": self.is_running,
+                "total_nodes": len(self.nodes),
+                "active_nodes": active_nodes,
+                "overloaded_nodes": overloaded_nodes,
+                "load_balancing_strategy": self.load_balancer.strategy.value
             },
-            "performance_metrics": {
-                "average_load": current_metrics.average_load,
-                "requests_per_second": current_metrics.requests_per_second,
-                "average_latency_ms": current_metrics.average_latency,
-                "p95_latency_ms": current_metrics.p95_latency,
-                "error_rate": current_metrics.error_rate,
-                "quantum_optimization_score": current_metrics.quantum_optimization_score
+            "task_statistics": {
+                "completed_tasks": total_completed,
+                "active_tasks": total_active,
+                "queued_tasks": total_queued,
+                "successful_tasks": successful_tasks,
+                "failed_tasks": failed_tasks,
+                "success_rate": successful_tasks / total_completed if total_completed > 0 else 0
             },
-            "load_balancing": {
-                "strategy": self.load_balancing_strategy.value,
-                "optimization_iterations": self.balancer_state.get("optimization_iterations", 0),
-                "quantum_enabled": self.quantum_optimization
-            },
-            "auto_scaling": {
-                "last_action": self.last_scaling_action,
-                "cooldown_remaining": max(0, self.scaling_cooldown - (
-                    datetime.now() - self.last_scaling_action
-                ).seconds) if self.last_scaling_action else 0,
-                "target_range": f"{self.min_nodes}-{self.max_nodes}",
-                "ai_prediction_enabled": self.ai_prediction_enabled
-            },
-            "processing_history": {
-                "total_requests": len(self.processing_history),
-                "success_rate": sum(1 for r in self.processing_history if r["success"]) / max(len(self.processing_history), 1) * 100
-            }
+            "performance_metrics": self.metrics,
+            "regional_distribution": self._get_regional_distribution()
         }
-
-
-# Factory function for easy instantiation
-def create_hyperscale_edge_orchestrator(**kwargs) -> HyperScaleEdgeOrchestrator:
-    """Create hyper-scale edge orchestrator with optimal configurations."""
-    return HyperScaleEdgeOrchestrator(**kwargs)
-
-
-# Example usage and demonstration
-async def demo_hyperscale_edge_computing():
-    """Demonstrate hyper-scale edge computing system."""
-    logger = get_logger(__name__)
     
-    # Initialize orchestrator
-    orchestrator = HyperScaleEdgeOrchestrator(
-        min_nodes=5,
-        max_nodes=50,
-        quantum_optimization=True,
-        ai_prediction_enabled=True
-    )
-    
-    logger.info("🌐 Starting hyper-scale edge computing demonstration")
-    
-    try:
-        # Register initial edge nodes
-        regions = ["us-east", "us-west", "eu-central", "apac-southeast"]
+    def _get_regional_distribution(self) -> Dict[str, Any]:
+        """Get distribution of nodes and tasks across regions."""
+        regional_stats = defaultdict(lambda: {"nodes": 0, "tasks_completed": 0})
         
-        for i in range(10):
-            region = regions[i % len(regions)]
-            await orchestrator.register_edge_node(
-                node_type=EdgeNodeType.REGIONAL_EDGE,
-                location={
-                    "lat": np.random.uniform(25, 60),
-                    "lon": np.random.uniform(-120, 120)
-                },
-                capabilities={
-                    "cpu_cores": 16,
-                    "memory_gb": 64,
-                    "storage_gb": 1000,
-                    "quantum_enabled": i % 3 == 0  # 1/3 quantum enabled
-                },
-                region=region
-            )
+        for node in self.nodes.values():
+            regional_stats[node.region]["nodes"] += 1
+            regional_stats[node.region]["tasks_completed"] += node.completed_tasks
         
-        # Process sample requests
-        for i in range(20):
-            request = EdgeRequest(
-                client_location={
-                    "lat": np.random.uniform(30, 50),
-                    "lon": np.random.uniform(-100, -70)
-                },
-                request_size=np.random.randint(1000, 10000),
-                priority=np.random.randint(1, 6)
+        return dict(regional_stats)
+    
+    async def scale_out(self, additional_nodes: int = 5):
+        """Add more edge nodes for scaling out."""
+        current_count = len(self.nodes)
+        self._initialize_edge_nodes(additional_nodes)
+        
+        new_count = len(self.nodes)
+        self.logger.info(f"Scaled out: {new_count - current_count} new nodes added (total: {new_count})")
+    
+    async def scale_in(self, nodes_to_remove: int = 5):
+        """Remove edge nodes for scaling in."""
+        # Remove least utilized nodes first
+        sorted_nodes = sorted(
+            self.nodes.values(),
+            key=lambda n: n.total_capacity_score,
+            reverse=True
+        )
+        
+        nodes_removed = 0
+        for node in sorted_nodes:
+            if nodes_removed >= nodes_to_remove:
+                break
+            
+            # Only remove nodes that are not currently processing tasks
+            if node.active_tasks == 0 and node.state != EdgeNodeState.OVERLOADED:
+                del self.nodes[node.node_id]
+                nodes_removed += 1
+        
+        self.logger.info(f"Scaled in: {nodes_removed} nodes removed (total: {len(self.nodes)})")
+
+
+# Global hyper-scale edge system
+_hyperscale_edge_system = None
+
+def get_hyperscale_edge_system(initial_node_count: int = 10) -> HyperScaleEdgeSystem:
+    """Get or create hyper-scale edge system instance."""
+    global _hyperscale_edge_system
+    if _hyperscale_edge_system is None:
+        _hyperscale_edge_system = HyperScaleEdgeSystem(initial_node_count)
+    return _hyperscale_edge_system
+
+
+# Decorators for distributed execution
+def distributed_task(priority: TaskPriority = TaskPriority.MEDIUM,
+                    resource_requirements: Dict[str, float] = None,
+                    estimated_duration_ms: float = 1000.0):
+    """Decorator for distributed task execution."""
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            edge_system = get_hyperscale_edge_system()
+            
+            if not edge_system.is_running:
+                await edge_system.start_processing()
+            
+            task_id = await edge_system.submit_task(
+                func, *args,
+                priority=priority,
+                resource_requirements=resource_requirements,
+                estimated_duration_ms=estimated_duration_ms,
+                **kwargs
             )
             
-            try:
-                result = await orchestrator.process_edge_request(request)
-                logger.info(f"✅ Request {i+1} processed in {result['processing_time']*1000:.1f}ms")
-            except Exception as e:
-                logger.error(f"❌ Request {i+1} failed: {e}")
+            return await edge_system.get_task_result(task_id)
         
-        # Get system status
-        status = await orchestrator.get_system_status()
-        
-        logger.info(f"📊 System status:")
-        logger.info(f"  - Edge nodes: {status['edge_nodes']['total']} ({status['edge_nodes']['quantum_enabled']} quantum-enabled)")
-        logger.info(f"  - Success rate: {status['processing_history']['success_rate']:.1f}%")
-        logger.info(f"  - Average latency: {status['performance_metrics']['average_latency_ms']:.1f}ms")
-        logger.info(f"  - Quantum optimization score: {status['performance_metrics']['quantum_optimization_score']:.1f}")
-        
-        return status
-        
-    except Exception as e:
-        logger.error(f"❌ Hyper-scale edge demonstration failed: {e}")
-        raise
+        return wrapper
+    return decorator
 
 
-if __name__ == "__main__":
-    asyncio.run(demo_hyperscale_edge_computing())
+def high_priority_task(func):
+    """Decorator for high-priority distributed tasks."""
+    return distributed_task(
+        priority=TaskPriority.HIGH,
+        resource_requirements={"cpu": 20, "memory": 20},
+        estimated_duration_ms=500.0
+    )(func)
+
+
+# Global edge system instance
+_edge_system = None
+
+def get_edge_system(initial_node_count: int = 10) -> HyperScaleEdgeSystem:
+    """Get or create edge system instance."""
+    global _edge_system
+    if _edge_system is None:
+        _edge_system = HyperScaleEdgeSystem(initial_node_count)
+    return _edge_system
+
+
+def edge_optimized(func):
+    """Decorator for edge-optimized execution."""
+    async def wrapper(*args, **kwargs):
+        edge_system = get_edge_system()
+        # Create a simple distributed task
+        task = DistributedTask(
+            task_id=f"edge_{func.__name__}_{int(time.time())}",
+            task_type=func.__name__,
+            priority=TaskPriority.HIGH,
+            resource_requirements={}
+        )
+        # Submit task and wait for completion
+        result = await edge_system.submit_task(task)
+        return result
+    return wrapper
+
+
+def distributed_edge_task(priority: TaskPriority = TaskPriority.MEDIUM):
+    """Decorator for distributed edge task execution."""
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            edge_system = get_edge_system()
+            task = DistributedTask(
+                task_id=f"distributed_{func.__name__}_{int(time.time())}",
+                task_type=func.__name__,
+                priority=priority,
+                resource_requirements={}
+            )
+            result = await edge_system.submit_task(task)
+            return result
+        return wrapper
+    return decorator

@@ -74,7 +74,7 @@ class SimpleSCGraphDataset:
     
     def __init__(
         self,
-        name: str,
+        name: str = "default_dataset",
         root: str = "./data",
         task: str = "cell_type_prediction",
         download: bool = False,
