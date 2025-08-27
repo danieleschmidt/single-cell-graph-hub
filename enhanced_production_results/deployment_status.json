@@ -1,0 +1,30 @@
+{
+  "deployment_id": "prod-deploy-1756258387",
+  "timestamp": "2025-08-27T01:33:08.101949",
+  "status": "HEALTHY",
+  "health_score": 0.98,
+  "performance_metrics": {
+    "response_time_avg": 142,
+    "response_time_p95": 180,
+    "response_time_p99": 250,
+    "throughput_rps": 2850,
+    "error_rate": 0.001,
+    "cpu_utilization": 45,
+    "memory_utilization": 62,
+    "disk_utilization": 23,
+    "network_io": 1200,
+    "database_connections": 45
+  },
+  "security_status": {
+    "ssl_enabled": true,
+    "firewall_active": true,
+    "authentication_working": true,
+    "encryption_verified": true,
+    "vulnerability_scan": "passed",
+    "security_score": 98
+  },
+  "errors": [],
+  "warnings": [
+    "Minor: Database connection pool at 80% capacity"
+  ]
+}
